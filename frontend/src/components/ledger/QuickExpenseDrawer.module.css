@@ -1,0 +1,207 @@
+.dialog {
+  margin: 0;
+  padding: 0;
+  border: none;
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: transparent;
+}
+
+.dialog::backdrop {
+  background-color: rgba(11, 15, 13, 0.55);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: var(--max-width-app);
+  max-height: 94dvh;
+  margin: 0 auto;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform var(--duration-fast) var(--ease-snappy);
+}
+
+.dragArea {
+  padding: 0.5rem 1rem 0.65rem;
+  border-bottom: 1px solid var(--border-subtle);
+  touch-action: none;
+  user-select: none;
+}
+
+.dragPill {
+  width: 2.25rem;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--border-strong);
+  margin: 0 auto 0.5rem;
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.closeBtn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.form {
+  padding: 0.85rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.accountingBar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background-color: var(--bg-canvas);
+}
+
+.metricCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.metricDivider {
+  width: 1px;
+  height: 1.8rem;
+  background-color: var(--border-subtle);
+  margin: 0 0.6rem;
+}
+
+.metricLabel {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.metricValue {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.accentText {
+  color: var(--color-accent);
+}
+
+.primaryText {
+  color: var(--color-primary);
+}
+
+.row2Col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  height: 2.25rem;
+}
+
+.segBtn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.segBtn:last-child {
+  border-right: none;
+}
+
+.segActive {
+  background-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.dateInput,
+.textInput,
+.selectInput,
+.memoInput {
+  width: 100%;
+  height: 2.25rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background-color: var(--bg-canvas);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.errorBanner {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-danger);
+  background-color: var(--color-danger-tint);
+  color: var(--color-danger);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.submitBtn {
+  height: 2.85rem;
+  border-radius: 6px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+

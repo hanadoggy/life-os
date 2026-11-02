@@ -1,0 +1,46 @@
+import { useEffect, useState } from "react";
+
+export type ThemeMode = "light" | "dark";
+
+const STORAGE_KEY = "lifeos_theme";
+
+function detectInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") return "light";
+  const saved = window.localStorage.getItem(STORAGE_KEY);
+  if (saved === "light" || saved === "dark") {
+    return saved;
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+export function useTheme() {
+  const [theme, setTheme] = useState<ThemeMode>(detectInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    function handleSystemChange(e: MediaQueryListEvent) {
+      if (!window.localStorage.getItem(STORAGE_KEY)) {
+        setTheme(e.matches ? "dark" : "light");
+      }
+    }
+    mql.addEventListener("change", handleSystemChange);
+    return () => mql.removeEventListener("change", handleSystemChange);
+  }, []);
+
+  function toggleTheme() {
+    setTheme((prev) => {
+      const next: ThemeMode = prev === "dark" ? "light" : "dark";
+      window.localStorage.setItem(STORAGE_KEY, next);
+      return next;
+    });
+  }
+
+  return { theme, toggleTheme };
+}
+

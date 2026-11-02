@@ -1,0 +1,95 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.targetTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.targetTab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background-color: var(--bg-canvas);
+  text-align: left;
+}
+
+.targetTab.activeGross {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-tint);
+}
+
+.targetTab.activePoints {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-tint);
+}
+
+.targetLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.targetValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pointsValue {
+  color: var(--color-accent);
+}
+
+.quickAddRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+}
+
+.quickChip {
+  height: 2rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.clearChip {
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.keyBtn {
+  height: 2.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.keyBtn:hover {
+  background-color: var(--bg-subtle);
+}
+

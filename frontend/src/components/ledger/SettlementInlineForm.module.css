@@ -1,0 +1,175 @@
+.container {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  background-color: var(--bg-canvas);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modeHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.modeTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modeTabs {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--bg-surface);
+}
+
+.modeBtn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.modeBtn:last-child {
+  border-right: none;
+}
+
+.modeBtn.active {
+  background-color: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.modeBtn.activePayable {
+  background-color: var(--color-accent);
+  color: #ffffff;
+}
+
+.lockedNotice {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--color-accent);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.splitToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.splitLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.splitBtns {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.splitBtn {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 7rem auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.peerInput,
+.amountInput {
+  height: 2.15rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background-color: var(--bg-surface);
+  font-size: 0.82rem;
+}
+
+.amountInput {
+  text-align: right;
+}
+
+.removeBtn {
+  width: 2.15rem;
+  height: 2.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.removeBtn:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.addRowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 2rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.payableHint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.payableAmountFixed {
+  height: 2.15rem;
+  padding: 0 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background-color: var(--bg-subtle);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+

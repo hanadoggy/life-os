@@ -1,0 +1,115 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.titleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.readoutDate {
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 2px 6px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.readoutLabel {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.readoutDaily {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.readoutCumulative {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.chartWrap {
+  padding: 8px 8px 4px;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.gridLine {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.areaFill {
+  fill: var(--color-primary-soft);
+}
+
+.strokeLine {
+  stroke: var(--color-primary);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cursorLine {
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.activeDot {
+  fill: var(--color-accent);
+  stroke: var(--bg-surface);
+  stroke-width: 2;
+}
+
+.axisLabel {
+  font-size: 10px;
+  fill: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.emptyState {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+

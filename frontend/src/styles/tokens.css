@@ -1,0 +1,85 @@
+:root {
+  /* Light Mode (Default / Warm Alabaster) */
+  --bg-canvas: #FAF9F5;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F2F0E8;
+  --text-primary: #141A17;
+  --text-muted: #5C6460;
+  --border-subtle: #E4E2DD;
+  --border-strong: #C9C6BE;
+
+  /* British Racing Green & Golden Orange */
+  --color-primary: #0B3B2D;
+  --color-primary-hover: #124E3D;
+  --color-primary-fg: #FAF9F5;
+  --color-primary-tint: rgba(11, 59, 45, 0.08);
+
+  --color-accent: #D97706;
+  --color-accent-tint: rgba(217, 119, 6, 0.12);
+
+  --color-danger: #B91C1C;
+  --color-danger-tint: rgba(185, 28, 28, 0.1);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* Motion */
+  --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+
+  /* Layout */
+  --max-width-app: 42rem;
+  --bottom-nav-height: 3.75rem;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-canvas: #0B0F0D;
+    --bg-surface: #131A17;
+    --bg-subtle: #1A231F;
+    --text-primary: #ECEBE6;
+    --text-muted: #8A948E;
+    --border-subtle: #222C27;
+    --border-strong: #324039;
+
+    --color-primary: #1E5E4A;
+    --color-primary-hover: #26735B;
+    --color-primary-fg: #ECEBE6;
+    --color-primary-tint: rgba(30, 94, 74, 0.22);
+
+    --color-accent: #F59E0B;
+    --color-accent-tint: rgba(245, 158, 11, 0.16);
+
+    --color-danger: #EF4444;
+    --color-danger-tint: rgba(239, 68, 68, 0.16);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-canvas: #0B0F0D;
+  --bg-surface: #131A17;
+  --bg-subtle: #1A231F;
+  --text-primary: #ECEBE6;
+  --text-muted: #8A948E;
+  --border-subtle: #222C27;
+  --border-strong: #324039;
+
+  --color-primary: #1E5E4A;
+  --color-primary-hover: #26735B;
+  --color-primary-fg: #ECEBE6;
+  --color-primary-tint: rgba(30, 94, 74, 0.22);
+
+  --color-accent: #F59E0B;
+  --color-accent-tint: rgba(245, 158, 11, 0.16);
+
+  --color-danger: #EF4444;
+  --color-danger-tint: rgba(239, 68, 68, 0.16);
+
+  color-scheme: dark;
+}
+

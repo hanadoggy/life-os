@@ -1,0 +1,71 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brandMark {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-accent);
+}
+
+.brandTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
+}
+
+.monthSelector {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border-radius: 4px;
+  padding: 0.15rem 0.25rem;
+}
+
+.monthLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 0.4rem;
+  color: var(--text-primary);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.iconBtn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-subtle);
+}
+

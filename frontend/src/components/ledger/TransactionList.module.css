@@ -1,0 +1,262 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.filterTabs {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+.tabBtn {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-snappy),
+    color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.tabBtn:last-child {
+  border-right: none;
+}
+
+.tabBtn:active {
+  transform: scale(0.97);
+}
+
+.tabActive {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  cursor: pointer;
+  transition: background-color var(--transition-snappy);
+}
+
+.rowMain:hover {
+  background: var(--bg-canvas);
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dateBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.txTitle {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.typePill {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+}
+
+.metaItem {
+  color: var(--text-muted);
+}
+
+.metaSep {
+  color: var(--border-subtle);
+}
+
+.pointTag {
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+.settlementTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+}
+
+.rightCol {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.amountGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.myShareAmount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.grossSub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-muted);
+}
+
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: color var(--transition-snappy),
+    background-color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.deleteBtn:hover {
+  color: var(--color-danger);
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.deleteBtn:active {
+  transform: scale(0.95);
+}
+
+.emptyState {
+  padding: 36px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.emptyAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.emptyAddBtn:hover {
+  background: var(--color-primary-hover);
+}
+
+.emptyAddBtn:active {
+  transform: scale(0.97);
+}
+

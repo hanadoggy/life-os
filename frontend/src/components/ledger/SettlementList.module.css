@@ -1,0 +1,303 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.titleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.peerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+.peerCard {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.peerName {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.peerNet {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.netPositive {
+  color: var(--color-primary);
+}
+
+.netNegative {
+  color: var(--color-accent);
+}
+
+.peerBreakdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.peerSubItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterTabs {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+.tabBtn {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--transition-snappy),
+    color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.tabBtn:last-child {
+  border-right: none;
+}
+
+.tabBtn:active {
+  transform: scale(0.97);
+}
+
+.tabActive {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  transition: background-color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.rowButton:hover {
+  background: var(--bg-canvas);
+}
+
+.rowButton:active {
+  transform: scale(0.99);
+}
+
+.checkCircle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  flex-shrink: 0;
+  transition: background-color var(--transition-snappy),
+    border-color var(--transition-snappy),
+    color var(--transition-snappy),
+    transform var(--transition-snappy);
+}
+
+.checkCircleActive {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+  transform: scale(1.04);
+}
+
+.itemMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.itemTopLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.peerBadge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.directionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.dirReceivable {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.dirPayable {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.itemDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.itemBottomLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* AGENTS.md §4.4: Golden Orange strikethrough animation on settlement completion */
+.strikeableTitle {
+  position: relative;
+  display: inline-block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: color var(--transition-snappy);
+}
+
+.strikeableTitle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--transition-snappy);
+}
+
+.rowSettled .strikeableTitle {
+  color: var(--text-muted);
+}
+
+.rowSettled .strikeableTitle::after {
+  transform: scaleX(1);
+}
+
+.methodLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.amountCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.itemAmount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: color var(--transition-snappy);
+}
+
+.amountSettled {
+  color: var(--text-muted);
+}
+
+.statusText {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.emptyBlock {
+  padding: 36px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
