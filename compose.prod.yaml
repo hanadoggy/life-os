@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: lifeos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lifeos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-lifeos}
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-lifeos} -d $${POSTGRES_DB:-lifeos}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    image: ${BACKEND_IMAGE:-lifeos-backend:latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lifeos-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Tokyo
+
+  nginx:
+    image: ${NGINX_IMAGE:-lifeos-nginx:latest}
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    container_name: lifeos-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TZ: Asia/Tokyo
+      DOMAIN_NAME: ${DOMAIN_NAME:-hanayor.com}
+    volumes:
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt
+
+  migrate:
+    image: migrate/migrate:v4.18.2
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/db/migrations:/migrations:ro
+    command: ["-path", "/migrations", "-database", "${DATABASE_URL}", "up"]
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["tools"]
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+
+volumes:
+  pgdata:
+  certbot_www:
+  certbot_conf:
+

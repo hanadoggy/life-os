@@ -31,8 +31,10 @@ dist/
 *.dll
 *.so
 *.dylib
-server
-app
+/server
+/app
+/backend/server
+/backend/app
 
 # Test & Coverage
 *.out
@@ -84,6 +86,8 @@ docker-compose.override.yml
 # Nginx local certs/logs
 nginx/logs/
 nginx/certs/
+deploy/nginx/logs/
+deploy/nginx/certs/
 
 # ==============================================================================
 # Operating System & IDEs

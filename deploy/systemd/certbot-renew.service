@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew Let's Encrypt certificates for LifeOS and reload Nginx
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/lifeos
+ExecStart=/usr/bin/docker compose -f /opt/lifeos/compose.prod.yaml --profile tools run --rm certbot renew --webroot -w /var/www/certbot --quiet
+ExecStartPost=/usr/bin/docker compose -f /opt/lifeos/compose.prod.yaml exec -T nginx nginx -s reload
+
