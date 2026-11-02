@@ -10,7 +10,8 @@ COPY frontend/ ./
 RUN if [ -f package.json ]; then \
       pnpm install --frozen-lockfile && pnpm build; \
     else \
-      mkdir -p dist && cp index.html dist/index.html; \
+      mkdir -p dist && cp index.html dist/index.html && \
+      if [ -d public ]; then cp -R public/. dist/; fi; \
     fi
 
 FROM nginx:1.27-alpine
@@ -25,4 +26,3 @@ RUN chmod +x /docker-entrypoint.d/10-init-dummy-cert.sh
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80 443
-

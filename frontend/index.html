@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>LifeOS</title>
     <style>
       :root {
-        color-scheme: dark light;
+        color-scheme: dark;
         font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
       }
       body {
@@ -17,26 +20,56 @@
         place-items: center;
         background: #0f172a;
         color: #f8fafc;
+        padding: env(safe-area-inset-top) 1.5rem env(safe-area-inset-bottom);
+        box-sizing: border-box;
       }
       main {
+        width: 100%;
+        max-width: 22rem;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 1rem;
+        padding: 2rem 1.5rem;
         text-align: center;
-        padding: 2rem;
       }
       h1 {
         margin: 0 0 0.5rem;
-        font-size: 1.75rem;
+        font-size: 1.5rem;
       }
       p {
-        margin: 0;
+        margin: 0 0 1.5rem;
         color: #94a3b8;
+        font-size: 0.925rem;
+        word-break: break-all;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.85rem 1rem;
+        border-radius: 0.75rem;
+        border: none;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        background: #3b82f6;
+        color: #ffffff;
+      }
+      .btn-secondary {
+        background: #334155;
+        color: #e2e8f0;
       }
     </style>
   </head>
   <body>
     <main>
       <h1>LifeOS</h1>
-      <p>Walking Skeleton is online (hanayor.com)</p>
+      <p id="status-text">セッションを確認中...</p>
+      <div id="action-area"></div>
     </main>
+    <script src="/auth-check.js" defer></script>
   </body>
 </html>
-

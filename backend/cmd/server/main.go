@@ -7,12 +7,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/hanadoggy/life-os/backend/internal/config"
+	"github.com/hanadoggy/life-os/backend/internal/db"
 	"github.com/hanadoggy/life-os/backend/internal/httpx"
 	"github.com/hanadoggy/life-os/backend/internal/modules/ledger"
+	"github.com/hanadoggy/life-os/backend/internal/platform/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,10 +63,27 @@ func main() {
 	}
 	cancelPing()
 
+	queries := db.New(dbPool)
+	secureCookie := cfg.IsProduction() || strings.HasPrefix(cfg.AppBaseURL, "https://")
+	sessionMgr := auth.NewSessionManager(queries, logger, secureCookie)
+
+	redirectURL := cfg.GoogleOAuthRedirectURL
+	if redirectURL == "" {
+		redirectURL = cfg.AppBaseURL + "/auth/google/callback"
+	}
+	authHandler := auth.NewHandler(auth.OAuthConfig{
+		ClientID:         cfg.GoogleOAuthClientID,
+		ClientSecret:     cfg.GoogleOAuthClientSecret,
+		RedirectURL:      redirectURL,
+		AllowedUserEmail: cfg.AllowedUserEmail,
+		AppBaseURL:       cfg.AppBaseURL,
+		SecureCookie:     secureCookie,
+	}, sessionMgr, logger)
+
 	sheetWakeCh := make(chan struct{}, 1)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	rootMux := http.NewServeMux()
+	rootMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		hCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 
@@ -83,12 +104,35 @@ func main() {
 		})
 	})
 
+	// Public OAuth login/callback routes (/auth/google/*)
+	authHandler.RegisterPublicRoutes(rootMux)
+
+	// Protected API routes (/api/v1/*) guarded by Session Auth + Origin CSRF
+	apiMux := http.NewServeMux()
+	authHandler.RegisterProtectedRoutes(apiMux)
+
 	ledgerSvc := ledger.NewService(dbPool, cfg.Location, sheetWakeCh)
 	ledgerHandler := ledger.NewHandler(ledgerSvc, logger, cfg.Location)
-	ledgerHandler.RegisterRoutes(mux)
+	ledgerHandler.RegisterRoutes(apiMux)
+
+	rootMux.Handle("/api/v1/", httpx.Chain(
+		apiMux,
+		auth.RequireAuth(sessionMgr, logger),
+		auth.RequireCSRF(cfg.AppBaseURL),
+	))
+
+	// Background workers lifecycle (Specification §7.3)
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sessionMgr.RunCleanupWorker(workerCtx)
+	}()
 
 	handler := httpx.Chain(
-		mux,
+		rootMux,
 		httpx.RequestID,
 		httpx.Logger(logger),
 		httpx.Recover(logger),
@@ -120,6 +164,8 @@ func main() {
 	case err := <-serverErr:
 		if err != nil {
 			logger.Error("server_listen_failed", slog.String("error", err.Error()))
+			cancelWorkers()
+			wg.Wait()
 			os.Exit(1)
 		}
 	case <-ctx.Done():
@@ -132,7 +178,9 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("server_graceful_shutdown_failed", slog.String("error", err.Error()))
-	} else {
-		logger.Info("server_stopped_cleanly")
 	}
+
+	cancelWorkers()
+	wg.Wait()
+	logger.Info("server_stopped_cleanly")
 }
