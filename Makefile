@@ -33,7 +33,7 @@ sqlc: ## sqlc 코드 생성
 	cd backend && sqlc generate
 
 test: ## 백엔드 전체 테스트 실행
-	cd backend && TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test -v -race ./...
+	cd backend && TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test -v -race -count=1 ./...
 
 dev-backend: ## 백엔드 서버 로컬 실행
 	cd backend && go run ./cmd/server

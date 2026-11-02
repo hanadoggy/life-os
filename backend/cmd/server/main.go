@@ -12,6 +12,7 @@ import (
 
 	"github.com/hanadoggy/life-os/backend/internal/config"
 	"github.com/hanadoggy/life-os/backend/internal/httpx"
+	"github.com/hanadoggy/life-os/backend/internal/modules/ledger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -58,6 +59,8 @@ func main() {
 	}
 	cancelPing()
 
+	sheetWakeCh := make(chan struct{}, 1)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		hCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -79,6 +82,10 @@ func main() {
 			"time":   time.Now().In(cfg.Location).Format(time.RFC3339),
 		})
 	})
+
+	ledgerSvc := ledger.NewService(dbPool, cfg.Location, sheetWakeCh)
+	ledgerHandler := ledger.NewHandler(ledgerSvc, logger, cfg.Location)
+	ledgerHandler.RegisterRoutes(mux)
 
 	handler := httpx.Chain(
 		mux,
@@ -129,4 +136,3 @@ func main() {
 		logger.Info("server_stopped_cleanly")
 	}
 }
-
