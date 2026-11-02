@@ -60,6 +60,7 @@ build/
 # PWA service worker output
 dev-dist/
 sw.js
+!frontend/public/sw.js
 workbox-*.js
 
 # Logs
