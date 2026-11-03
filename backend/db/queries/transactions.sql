@@ -45,6 +45,15 @@ SELECT
 FROM v_ledger_entries
 WHERE id = $1;
 
+-- name: GetTransactionSyncMetaByID :one
+SELECT
+    id,
+    tx_date,
+    sheet_location,
+    deleted_at
+FROM transactions
+WHERE id = $1;
+
 -- name: GetLedgerEntryByIdempotencyKey :one
 SELECT
     id,

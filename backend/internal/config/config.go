@@ -52,7 +52,7 @@ func Load() (*Config, error) {
 		GoogleOAuthRedirectURL:  os.Getenv("GOOGLE_OAUTH_REDIRECT_URL"),
 		AllowedUserEmail:        strings.TrimSpace(os.Getenv("ALLOWED_USER_EMAIL")),
 		SheetsEnabled:           getEnvBool("SHEETS_ENABLED", false),
-		SheetsMonthTabFormat:    getEnv("SHEETS_MONTH_TAB_FORMAT", "{m}月"),
+		SheetsMonthTabFormat:    getEnv("SHEETS_MONTH_TAB_FORMAT", "{Month}"),
 		SheetsTxIDColumn:        getEnv("SHEETS_TXID_COLUMN", "Z"),
 		SheetsAppLogTab:         getEnv("SHEETS_APP_LOG_TAB", "app_log"),
 	}
@@ -81,9 +81,6 @@ func (c *Config) Validate() error {
 	u, err := url.Parse(c.AppBaseURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("APP_BASE_URL must be a valid http(s) origin: %q", c.AppBaseURL)
-	}
-	if c.SheetsEnabled && len(c.SheetsSpreadsheetIDs) == 0 {
-		return fmt.Errorf("SHEETS_SPREADSHEET_IDS is required when SHEETS_ENABLED=true")
 	}
 	return nil
 }

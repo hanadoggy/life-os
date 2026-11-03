@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -219,6 +220,35 @@ func (q *Queries) GetMonthlyTotals(ctx context.Context, arg GetMonthlyTotalsPara
 		&i.IrregularTotal,
 		&i.IncomeTotal,
 		&i.PointsSaved,
+	)
+	return i, err
+}
+
+const getTransactionSyncMetaByID = `-- name: GetTransactionSyncMetaByID :one
+SELECT
+    id,
+    tx_date,
+    sheet_location,
+    deleted_at
+FROM transactions
+WHERE id = $1
+`
+
+type GetTransactionSyncMetaByIDRow struct {
+	ID            pgtype.UUID `json:"id"`
+	TxDate        pgtype.Date `json:"tx_date"`
+	SheetLocation pgtype.Text `json:"sheet_location"`
+	DeletedAt     *time.Time  `json:"deleted_at"`
+}
+
+func (q *Queries) GetTransactionSyncMetaByID(ctx context.Context, id pgtype.UUID) (GetTransactionSyncMetaByIDRow, error) {
+	row := q.db.QueryRow(ctx, getTransactionSyncMetaByID, id)
+	var i GetTransactionSyncMetaByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TxDate,
+		&i.SheetLocation,
+		&i.DeletedAt,
 	)
 	return i, err
 }

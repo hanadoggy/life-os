@@ -17,6 +17,7 @@ import (
 	"github.com/hanadoggy/life-os/backend/internal/httpx"
 	"github.com/hanadoggy/life-os/backend/internal/modules/ledger"
 	"github.com/hanadoggy/life-os/backend/internal/platform/auth"
+	"github.com/hanadoggy/life-os/backend/internal/platform/gsheets"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -130,6 +131,37 @@ func main() {
 		defer wg.Done()
 		sessionMgr.RunCleanupWorker(workerCtx)
 	}()
+
+	if cfg.SheetsEnabled {
+		sheetsClient, err := gsheets.NewADCClient(workerCtx)
+		if err != nil {
+			logger.Error("failed_to_init_gsheets_client", slog.String("error", err.Error()))
+		} else {
+			spreadsheetIDs := cfg.SheetsSpreadsheetIDs
+			if len(spreadsheetIDs) == 0 {
+				discovered, discErr := sheetsClient.DiscoverYearSpreadsheets(workerCtx, "Household account book")
+				if discErr != nil {
+					logger.Warn("failed_to_autodiscover_spreadsheets", slog.String("error", discErr.Error()))
+				} else {
+					spreadsheetIDs = discovered
+				}
+			}
+			sheetWorker := gsheets.NewWorker(gsheets.WorkerConfig{
+				Enabled:        true,
+				SpreadsheetIDs: spreadsheetIDs,
+				MonthTabFormat: cfg.SheetsMonthTabFormat,
+				TxIDColumn:     cfg.SheetsTxIDColumn,
+				AppLogTab:      cfg.SheetsAppLogTab,
+				Location:       cfg.Location,
+			}, queries, sheetsClient, sheetWakeCh, logger)
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sheetWorker.Run(workerCtx)
+			}()
+		}
+	}
 
 	handler := httpx.Chain(
 		rootMux,
