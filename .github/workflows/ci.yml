@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+jobs:
+  backend-and-frontend:
+    name: Verify Backend (Go + PG18 + sqlc) & Frontend (React 19 + TS)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: lifeos
+          POSTGRES_PASSWORD: lifeos_dev_password
+          POSTGRES_DB: lifeos_test
+          TZ: Asia/Tokyo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lifeos -d lifeos_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install golang-migrate & sqlc
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/migrate
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+      - name: Apply database migrations to lifeos_test
+        run: |
+          migrate -path backend/db/migrations -database "postgres://lifeos:lifeos_dev_password@localhost:5432/lifeos_test?sslmode=disable" up
+
+      - name: Verify sqlc generated code is up-to-date
+        working-directory: backend
+        run: |
+          sqlc diff
+
+      - name: Run Go vet & tests (unit + PostgreSQL 18 integration)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://lifeos:lifeos_dev_password@localhost:5432/lifeos_test?sslmode=disable
+        run: |
+          go vet ./...
+          go test -v -race -p 1 -count=1 ./...
+
+      - name: Install frontend dependencies & build production bundle
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+

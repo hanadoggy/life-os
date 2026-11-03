@@ -1,0 +1,97 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: project-18341a47-a3a8-4e47-a50
+  GCP_REGION: asia-northeast1
+  GCP_ZONE: asia-northeast1-a
+  GCE_INSTANCE: lifeos-vm
+  AR_REPO: lifeos
+  APP_DOMAIN: hanayor.com
+
+jobs:
+  deploy:
+    name: Build, Push to Artifact Registry & Deploy via IAP
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Backend & Nginx (Frontend) images
+        run: |
+          SHORT_SHA="${GITHUB_SHA::12}"
+          BACKEND_IMG="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/backend:${SHORT_SHA}"
+          NGINX_IMG="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/nginx:${SHORT_SHA}"
+
+          docker build -f backend/Dockerfile -t "${BACKEND_IMG}" backend
+          docker build -f deploy/nginx/Dockerfile -t "${NGINX_IMG}" .
+
+          docker push "${BACKEND_IMG}"
+          docker push "${NGINX_IMG}"
+
+          echo "BACKEND_IMG=${BACKEND_IMG}" >> "$GITHUB_ENV"
+          echo "NGINX_IMG=${NGINX_IMG}" >> "$GITHUB_ENV"
+
+      - name: Sync compose & migrations and deploy on GCE VM via IAP SSH
+        run: |
+          tar -czf /tmp/deploy-bundle.tar.gz compose.prod.yaml backend/db/migrations deploy/scripts deploy/systemd
+
+          gcloud compute scp /tmp/deploy-bundle.tar.gz ${{ env.GCE_INSTANCE }}:/tmp/deploy-bundle.tar.gz \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --tunnel-through-iap
+
+          gcloud compute ssh ${{ env.GCE_INSTANCE }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --tunnel-through-iap \
+            --command="
+              set -euo pipefail
+              sudo tar -xzf /tmp/deploy-bundle.tar.gz -C /opt/lifeos
+              rm -f /tmp/deploy-bundle.tar.gz
+              cd /opt/lifeos
+              sudo gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+              export BACKEND_IMAGE='${{ env.BACKEND_IMG }}'
+              export NGINX_IMAGE='${{ env.NGINX_IMG }}'
+              sudo -E docker compose -f compose.prod.yaml pull app nginx
+              sudo -E docker compose -f compose.prod.yaml --profile tools run --rm migrate
+              sudo -E docker compose -f compose.prod.yaml up -d app nginx
+            "
+
+      - name: Verify production /healthz endpoint
+        run: |
+          for i in $(seq 1 15); do
+            if curl -fsS "https://${{ env.APP_DOMAIN }}/healthz" | grep -q '"status":"ok"'; then
+              echo "Healthcheck passed!"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Healthcheck failed after retries" >&2
+          exit 1
+

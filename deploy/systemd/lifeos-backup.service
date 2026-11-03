@@ -1,0 +1,12 @@
+[Unit]
+Description=LifeOS PostgreSQL Daily Backup to Google Cloud Storage
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/lifeos
+ExecStart=/bin/bash /opt/lifeos/deploy/scripts/backup.sh
+StandardOutput=journal
+StandardError=journal
+
