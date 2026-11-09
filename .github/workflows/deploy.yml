@@ -78,9 +78,9 @@ jobs:
               sudo gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
               export BACKEND_IMAGE='${{ env.BACKEND_IMG }}'
               export NGINX_IMAGE='${{ env.NGINX_IMG }}'
-              sudo -E docker compose -f compose.prod.yaml pull app nginx
-              sudo -E docker compose -f compose.prod.yaml --profile tools run --rm migrate
-              sudo -E docker compose -f compose.prod.yaml up -d app nginx
+              sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml pull app nginx
+              sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml --profile tools run --rm migrate
+              sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml up -d app nginx
             "
 
       - name: Verify production /healthz endpoint
