@@ -209,6 +209,17 @@ func TestLayoutAndParsing(t *testing.T) {
 	if vals[5] != wantMemo {
 		t.Errorf("memo = %q, want %q", vals[5], wantMemo)
 	}
+
+	// 5. Formula injection escaping & deterministic source_ref
+	if got := SanitizeSheetCell("=IMPORTXML(\"https://evil.example\", \"//a\")"); got != "'=IMPORTXML(\"https://evil.example\", \"//a\")" {
+		t.Errorf("SanitizeSheetCell did not prefix '=': got %q", got)
+	}
+	ref1 := BuildDeterministicSourceRef(2025, "November", parsed.TxDate, "成城石井", 2480, "", 1)
+	ref2 := BuildDeterministicSourceRef(2025, "November", parsed.TxDate, "成城石井", 2480, "", 1)
+	ref3 := BuildDeterministicSourceRef(2025, "November", parsed.TxDate, "成城石井", 2480, "", 2)
+	if ref1 != ref2 || ref1 == ref3 {
+		t.Errorf("unexpected deterministic source_refs: ref1=%q ref2=%q ref3=%q", ref1, ref2, ref3)
+	}
 }
 
 func TestWorkerIdempotencyMonthMoveAndDeleteIntegration(t *testing.T) {
@@ -222,11 +233,17 @@ func TestWorkerIdempotencyMonthMoveAndDeleteIntegration(t *testing.T) {
 
 	pool, err := pgxpool.New(ctx, testDSN)
 	if err != nil {
+		if os.Getenv("CI") != "" {
+			t.Fatalf("pool create failed in CI: %v", err)
+		}
 		t.Skipf("skipping integration test: pool create failed: %v", err)
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
+		if os.Getenv("CI") != "" {
+			t.Fatalf("db ping failed in CI: %v", err)
+		}
 		t.Skipf("skipping integration test: db ping failed: %v", err)
 	}
 

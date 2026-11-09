@@ -21,6 +21,9 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool, <-chan stru
 
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("CI") != "" {
+			t.Fatal("TEST_DATABASE_URL must be set in CI")
+		}
 		t.Skip("TEST_DATABASE_URL not set; skipping PostgreSQL integration test")
 	}
 
@@ -31,6 +34,9 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool, <-chan stru
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
+		if os.Getenv("CI") != "" {
+			t.Fatalf("cannot ping test db in CI: %v", err)
+		}
 		t.Skipf("cannot ping test db (%v); skipping integration test", err)
 	}
 

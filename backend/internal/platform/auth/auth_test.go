@@ -72,6 +72,9 @@ func TestRequireCSRF(t *testing.T) {
 func TestOAuthAndSessionLifecycleIntegration(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
+		if os.Getenv("CI") != "" {
+			t.Fatal("TEST_DATABASE_URL must be set in CI")
+		}
 		t.Skip("TEST_DATABASE_URL not set; skipping PostgreSQL auth integration test")
 	}
 
@@ -83,6 +86,9 @@ func TestOAuthAndSessionLifecycleIntegration(t *testing.T) {
 	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
+		if os.Getenv("CI") != "" {
+			t.Fatalf("cannot ping test db in CI: %v", err)
+		}
 		t.Skipf("cannot ping test db (%v); skipping", err)
 	}
 	_, _ = pool.Exec(ctx, `TRUNCATE TABLE sessions;`)
