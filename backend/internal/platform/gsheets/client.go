@@ -164,6 +164,9 @@ func (c *Client) ResolveMonthTabName(ctx context.Context, spreadsheetID, tabForm
 
 // UpsertRow implements SheetWriter.
 func (c *Client) UpsertRow(ctx context.Context, spreadsheetID, tabName, txIDCol string, row LedgerRowData) error {
+	if err := c.ensureTabExists(ctx, spreadsheetID, tabName); err != nil {
+		return err
+	}
 	txIDCol = normalizeColLetter(txIDCol)
 	rowNum, err := c.findRowByTxID(ctx, spreadsheetID, tabName, txIDCol, row.TxID)
 	if err != nil {
@@ -205,8 +208,8 @@ func (c *Client) DeleteRow(ctx context.Context, spreadsheetID, tabName, txIDCol,
 	txIDCol = normalizeColLetter(txIDCol)
 	rowNum, err := c.findRowByTxID(ctx, spreadsheetID, tabName, txIDCol, txID)
 	if err != nil {
-		// If the tab itself doesn't exist, treat delete as a no-op
-		if strings.Contains(err.Error(), "Unable to parse range") || strings.Contains(err.Error(), "not found") {
+		// If the tab itself doesn't exist in this spreadsheet, treat delete as a no-op
+		if strings.Contains(err.Error(), "Unable to parse range") {
 			return nil
 		}
 		return err

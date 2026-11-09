@@ -230,6 +230,7 @@ func migrateYear(
 
 		sheetLoc := gsheets.FormatSheetLocation(year, tabName)
 		tabCount := 0
+		occurrenceCounts := make(map[string]int)
 
 		for idx, cells := range rawRows {
 			rowNum := idx + 1
@@ -239,6 +240,10 @@ func migrateYear(
 				continue
 			}
 			if skip {
+				continue
+			}
+			// Skip rows that already carry a tx_id in SHEETS_TXID_COLUMN (either app-created or previously written back)
+			if strings.TrimSpace(parsed.ExistingTxID) != "" {
 				continue
 			}
 
@@ -268,7 +273,17 @@ func migrateYear(
 				memoPtr = &m
 			}
 
-			sourceRef := fmt.Sprintf("%d/%s/A%d", year, tabName, rowNum)
+			sigKey := fmt.Sprintf("%s|%s|%d|%s", parsed.TxDate.Format("2006-01-02"), parsed.Title, parsed.GrossAmount, parsed.Memo)
+			occurrenceCounts[sigKey]++
+			sourceRef := gsheets.BuildDeterministicSourceRef(
+				year,
+				tabName,
+				parsed.TxDate,
+				parsed.Title,
+				parsed.GrossAmount,
+				parsed.Memo,
+				occurrenceCounts[sigKey],
+			)
 
 			staged = append(staged, stagedImportRow{
 				txDate:          parsed.TxDate,
@@ -432,15 +447,22 @@ func migrateYear(
 		return nil
 	}
 
-	// Query source_ref -> id for this year and write back UUIDs to each monthly tab
-	prefix := fmt.Sprintf("%d/%%", year)
+	// Map each staged source_ref to its current live sheet (tabName, rowNumber) from this run,
+	// so we never write UUIDs to stale row numbers if rows shifted earlier.
+	sourceRefs := make([]string, len(staged))
+	stagedByRef := make(map[string]stagedImportRow, len(staged))
+	for i, r := range staged {
+		sourceRefs[i] = r.sourceRef
+		stagedByRef[r.sourceRef] = r
+	}
+
 	rows, err := dbPool.Query(ctx, `
 		SELECT id::text, source_ref
 		FROM transactions
 		WHERE source = 'SHEET_IMPORT'
-		  AND source_ref LIKE $1
+		  AND source_ref = ANY($1::text[])
 		  AND deleted_at IS NULL
-	`, prefix)
+	`, sourceRefs)
 	if err != nil {
 		return fmt.Errorf("query imported ids for write-back: %w", err)
 	}
@@ -452,21 +474,14 @@ func migrateYear(
 		if err := rows.Scan(&idStr, &srcRef); err != nil {
 			return err
 		}
-		// srcRef format: "<year>/<tab>/A<rowNumber>"
-		parts := strings.Split(srcRef, "/")
-		if len(parts) != 3 {
+		stRow, ok := stagedByRef[srcRef]
+		if !ok || stRow.rowNumber <= 0 {
 			continue
 		}
-		tab := parts[1]
-		rowStr := strings.TrimLeft(parts[2], "ABZ")
-		rowNum, err := strconv.Atoi(rowStr)
-		if err != nil || rowNum <= 0 {
-			continue
+		if byTab[stRow.tabName] == nil {
+			byTab[stRow.tabName] = make(map[int]string)
 		}
-		if byTab[tab] == nil {
-			byTab[tab] = make(map[int]string)
-		}
-		byTab[tab][rowNum] = idStr
+		byTab[stRow.tabName][stRow.rowNumber] = idStr
 	}
 
 	for tab, rowMap := range byTab {

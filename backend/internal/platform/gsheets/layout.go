@@ -1,6 +1,8 @@
 package gsheets
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -294,10 +296,39 @@ func FormatRowValues(row LedgerRowData) []any {
 		row.TxDate,
 		colB,
 		colC,
-		row.Title,
+		SanitizeSheetCell(row.Title),
 		row.MyShare,
-		memoText,
+		SanitizeSheetCell(memoText),
 	}
+}
+
+// SanitizeSheetCell prefixes strings starting with =, +, -, or @ with a single quote (')
+// so Google Sheets USER_ENTERED mode treats them as literal text rather than formulas.
+func SanitizeSheetCell(val string) string {
+	s := strings.TrimSpace(val)
+	if s == "" {
+		return ""
+	}
+	switch s[0] {
+	case '=', '+', '-', '@':
+		return "'" + s
+	default:
+		return s
+	}
+}
+
+// BuildDeterministicSourceRef computes a content-based source_ref for a sheet row
+// so inserting/deleting rows in Google Sheets does not cause duplicate imports on re-runs.
+func BuildDeterministicSourceRef(year int, tabName string, txDate time.Time, title string, grossAmount int32, memo string, ordinal int) string {
+	payload := fmt.Sprintf("%s|%s|%d|%s",
+		txDate.Format("2006-01-02"),
+		strings.TrimSpace(title),
+		grossAmount,
+		strings.TrimSpace(memo),
+	)
+	sum := sha256.Sum256([]byte(payload))
+	shortHash := hex.EncodeToString(sum[:6])
+	return fmt.Sprintf("%d/%s/%s#%d", year, strings.TrimSpace(tabName), shortHash, ordinal)
 }
 
 // FormatSheetMemo formats the memo cell, appending "総額 X / P Y / 精算 Z" if points or settlements were used.
