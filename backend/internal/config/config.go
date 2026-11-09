@@ -82,6 +82,14 @@ func (c *Config) Validate() error {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("APP_BASE_URL must be a valid http(s) origin: %q", c.AppBaseURL)
 	}
+	if c.IsProduction() {
+		if strings.TrimSpace(c.GoogleOAuthClientID) == "" || strings.TrimSpace(c.GoogleOAuthClientSecret) == "" {
+			return fmt.Errorf("GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are required in production")
+		}
+		if strings.TrimSpace(c.AllowedUserEmail) == "" {
+			return fmt.Errorf("ALLOWED_USER_EMAIL is required in production")
+		}
+	}
 	return nil
 }
 

@@ -118,8 +118,8 @@ func main() {
 
 	rootMux.Handle("/api/v1/", httpx.Chain(
 		apiMux,
-		auth.RequireAuth(sessionMgr, logger),
 		auth.RequireCSRF(cfg.AppBaseURL),
+		auth.RequireAuth(sessionMgr, logger),
 	))
 
 	// Background workers lifecycle (Specification §7.3)

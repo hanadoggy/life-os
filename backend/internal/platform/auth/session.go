@@ -23,6 +23,8 @@ const (
 	OAuthStateCookieName = "lifeos_oauth_state"
 	// SessionTTL is the 90-day sliding session expiration for iOS PWA convenience.
 	SessionTTL = 90 * 24 * time.Hour
+	// SessionTouchInterval throttles DB writes when sliding session expiration.
+	SessionTouchInterval = 1 * time.Hour
 	// OAuthStateTTL is the 10-minute lifetime for the OAuth login handshake cookie.
 	OAuthStateTTL = 10 * time.Minute
 )
@@ -116,14 +118,16 @@ func (m *SessionManager) ValidateAndSlideSession(ctx context.Context, w http.Res
 		return "", fmt.Errorf("get active session: %w", err)
 	}
 
-	newExpiresAt := time.Now().UTC().Add(SessionTTL)
-	if err := m.queries.TouchSession(ctx, db.TouchSessionParams{
-		TokenHash: tokenHash,
-		ExpiresAt: newExpiresAt,
-	}); err != nil {
-		m.logger.WarnContext(ctx, "failed_to_slide_session", slog.String("error", err.Error()))
-	} else {
-		m.setSessionCookie(w, rawToken, newExpiresAt)
+	if time.Since(sess.LastSeenAt) >= SessionTouchInterval {
+		newExpiresAt := time.Now().UTC().Add(SessionTTL)
+		if err := m.queries.TouchSession(ctx, db.TouchSessionParams{
+			TokenHash: tokenHash,
+			ExpiresAt: newExpiresAt,
+		}); err != nil {
+			m.logger.WarnContext(ctx, "failed_to_slide_session", slog.String("error", err.Error()))
+		} else {
+			m.setSessionCookie(w, rawToken, newExpiresAt)
+		}
 	}
 
 	return sess.Email, nil
