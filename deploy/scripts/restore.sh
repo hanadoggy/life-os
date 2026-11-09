@@ -14,7 +14,15 @@ fi
 BACKUP_BUCKET="${BACKUP_BUCKET:-lifeos-backups-project-18341a47-a3a8-4e47-a50}"
 POSTGRES_USER="${POSTGRES_USER:-lifeos}"
 POSTGRES_DB="${POSTGRES_DB:-lifeos}"
-DUMP_SOURCE="${1:-gs://${BACKUP_BUCKET}/pg/lifeos-latest.dump}"
+DUMP_SOURCE="${1:-}"
+
+if [ -z "${DUMP_SOURCE}" ]; then
+  DUMP_SOURCE="$(gcloud storage ls "gs://${BACKUP_BUCKET}/pg/lifeos-*.dump" | sort | tail -n 1)"
+  if [ -z "${DUMP_SOURCE}" ]; then
+    echo "[restore-rehearsal] ERROR: No backup dump files found in gs://${BACKUP_BUCKET}/pg/" >&2
+    exit 1
+  fi
+fi
 
 TMP_DUMP="/tmp/lifeos-restore-rehearsal.dump"
 REHEARSAL_CONTAINER="lifeos-restore-rehearsal-db"

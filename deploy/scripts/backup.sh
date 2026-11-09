@@ -31,12 +31,10 @@ if [ "${DUMP_SIZE}" -lt 1024 ]; then
   exit 1
 fi
 
-DEST_DATED="gs://${BACKUP_BUCKET}/pg/lifeos-${DATESTAMP}.dump"
-DEST_LATEST="gs://${BACKUP_BUCKET}/pg/lifeos-latest.dump"
+DEST_DATED="gs://${BACKUP_BUCKET}/pg/lifeos-${TIMESTAMP}.dump"
 
-echo "[backup] Uploading (${DUMP_SIZE} bytes) to ${DEST_DATED} and ${DEST_LATEST}..."
+echo "[backup] Uploading (${DUMP_SIZE} bytes) to ${DEST_DATED}..."
 gcloud storage cp "${TMP_DUMP}" "${DEST_DATED}" --quiet
-gcloud storage cp "${TMP_DUMP}" "${DEST_LATEST}" --quiet
 
 echo "[backup] Completed successfully."
 
