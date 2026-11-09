@@ -168,6 +168,9 @@ type MonthlySummaryResponse struct {
 	PointsSaved             int32                   `json:"points_saved"`
 	ReceivableOutstanding   int32                   `json:"receivable_outstanding"`
 	PayableOutstanding      int32                   `json:"payable_outstanding"`
+	VariableBudget          *int32                  `json:"variable_budget"`
+	VariableRemaining       *int32                  `json:"variable_remaining"`
+	BudgetBurnRate          *float64                `json:"budget_burn_rate"`
 	DailyVariableCumulative []DailyCumulativePoint  `json:"daily_variable_cumulative"`
 	CategoryBreakdown       []CategoryBreakdownItem `json:"category_breakdown"`
 }

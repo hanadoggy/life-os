@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -26,6 +26,13 @@
   font-size: 0.875rem;
   font-weight: 600;
   margin: 0;
+}
+
+.headerControls {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .readout {
@@ -59,6 +66,44 @@
   color: var(--color-primary);
 }
 
+.readoutOver {
+  color: var(--color-accent);
+}
+
+.modeTabs {
+  display: inline-flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+.modeBtn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+  transition:
+    background-color var(--duration-fast) var(--ease-snappy),
+    color var(--duration-fast) var(--ease-snappy),
+    transform var(--duration-fast) var(--ease-snappy);
+}
+
+.modeBtn:last-child {
+  border-right: none;
+}
+
+.modeBtn:active {
+  transform: scale(0.97);
+}
+
+.modeActive {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+  font-weight: 600;
+}
+
 .chartWrap {
   padding: 8px 8px 4px;
 }
@@ -77,12 +122,37 @@
   stroke-dasharray: 3 3;
 }
 
+.idealLine {
+  stroke: var(--text-muted);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 4;
+  opacity: 0.65;
+}
+
+.zeroBaseline {
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.75;
+}
+
 .areaFill {
-  fill: var(--color-primary-soft);
+  fill: var(--color-primary-tint);
+}
+
+.areaFillOver {
+  fill: var(--color-accent-tint);
 }
 
 .strokeLine {
   stroke: var(--color-primary);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.strokeLineOver {
+  stroke: var(--color-accent);
   stroke-width: 2.25;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -112,4 +182,3 @@
   font-size: 0.85rem;
   color: var(--text-muted);
 }
-

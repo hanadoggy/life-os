@@ -148,8 +148,35 @@ export interface MonthlySummary {
   points_saved: number;
   receivable_outstanding: number;
   payable_outstanding: number;
+  variable_budget: number | null;
+  variable_remaining: number | null;
+  budget_burn_rate: number | null;
   daily_variable_cumulative: DailyCumulativePoint[];
   category_breakdown: CategoryBreakdownItem[];
+}
+
+export interface BudgetItem {
+  year: number;
+  month: number;
+  variable_budget: number;
+  memo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetOverview {
+  year: number;
+  month: number;
+  default_budget: BudgetItem | null;
+  monthly_override: BudgetItem | null;
+  effective_budget: number | null;
+}
+
+export interface UpsertBudgetInput {
+  year: number;
+  month: number;
+  variable_budget: number;
+  memo?: string;
 }
 
 export interface SettlementItem {

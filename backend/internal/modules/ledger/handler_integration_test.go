@@ -43,7 +43,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool, <-chan stru
 
 	// Clean mutable tables before test while keeping seeded categories & payment_methods.
 	_, err = pool.Exec(ctx, `
-		TRUNCATE TABLE sheet_sync_outbox, settlements, transactions, expense_presets RESTART IDENTITY CASCADE;
+		TRUNCATE TABLE monthly_budgets, sheet_sync_outbox, settlements, transactions, expense_presets RESTART IDENTITY CASCADE;
 	`)
 	if err != nil {
 		pool.Close()

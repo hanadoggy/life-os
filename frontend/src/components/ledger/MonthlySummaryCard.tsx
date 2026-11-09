@@ -12,6 +12,11 @@ export function MonthlySummaryCard({
   onNavigateSettlements,
 }: MonthlySummaryCardProps) {
   const totalMyShare = summary.variable_total + summary.fixed_total;
+  const hasBudget =
+    summary.variable_budget !== null && summary.variable_budget !== undefined;
+  const burnRate = summary.budget_burn_rate ?? 0;
+  const remaining = summary.variable_remaining ?? 0;
+  const isOverBudget = hasBudget && remaining < 0;
 
   return (
     <section className={styles.card} aria-label="月次収支サマリー">
@@ -38,10 +43,47 @@ export function MonthlySummaryCard({
 
       <div className={styles.breakdownGrid}>
         <div className={styles.breakdownCell}>
-          <span className={styles.cellLabel}>変動費</span>
+          <div className={styles.cellHeaderRow}>
+            <span className={styles.cellLabel}>変動費</span>
+            {hasBudget && (
+              <span
+                className={`${styles.burnBadge} ${
+                  isOverBudget ? styles.burnBadgeOver : ""
+                } tabular`}
+              >
+                {Math.round(burnRate)}%
+              </span>
+            )}
+          </div>
           <span className={`${styles.cellValue} tabular`}>
             {formatJPY(summary.variable_total)}
           </span>
+          {hasBudget && summary.variable_budget !== null && (
+            <>
+              <div className={styles.budgetMetaRow}>
+                <span className={`${styles.budgetCaption} tabular`}>
+                  予算 {formatJPY(summary.variable_budget)} ({Math.round(burnRate)}%)
+                </span>
+                <span
+                  className={`${styles.budgetRemaining} ${
+                    isOverBudget ? styles.budgetRemainingOver : ""
+                  } tabular`}
+                >
+                  {isOverBudget
+                    ? `超過 ${formatJPY(Math.abs(remaining))}`
+                    : `残 ${formatJPY(remaining)}`}
+                </span>
+              </div>
+              <div className={styles.budgetBarTrack} aria-hidden="true">
+                <div
+                  className={`${styles.budgetBarFill} ${
+                    isOverBudget ? styles.budgetBarOver : ""
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, burnRate))}%` }}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className={styles.breakdownCell}>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -831,6 +832,39 @@ func (s *Service) GetMonthlySummary(ctx context.Context, year, month int) (Month
 		}
 	}
 
+	var variableBudget *int32
+	if monthlyBudget, err := s.queries.GetBudgetByYearMonth(ctx, db.GetBudgetByYearMonthParams{
+		Year:  int32(year),
+		Month: int32(month),
+	}); err == nil {
+		b := monthlyBudget.VariableBudget
+		variableBudget = &b
+	} else if errors.Is(err, pgx.ErrNoRows) {
+		if defaultBudget, defErr := s.queries.GetBudgetByYearMonth(ctx, db.GetBudgetByYearMonthParams{
+			Year:  0,
+			Month: 0,
+		}); defErr == nil {
+			b := defaultBudget.VariableBudget
+			variableBudget = &b
+		} else if !errors.Is(defErr, pgx.ErrNoRows) {
+			return MonthlySummaryResponse{}, fmt.Errorf("get default budget: %w", defErr)
+		}
+	} else {
+		return MonthlySummaryResponse{}, fmt.Errorf("get monthly budget: %w", err)
+	}
+
+	var variableRemaining *int32
+	var budgetBurnRate *float64
+	if variableBudget != nil {
+		rem := *variableBudget - totals.VariableTotal
+		variableRemaining = &rem
+		var rate float64
+		if *variableBudget > 0 {
+			rate = math.Round((float64(totals.VariableTotal)/float64(*variableBudget))*1000) / 10
+		}
+		budgetBurnRate = &rate
+	}
+
 	return MonthlySummaryResponse{
 		Year:                    year,
 		Month:                   month,
@@ -840,6 +874,9 @@ func (s *Service) GetMonthlySummary(ctx context.Context, year, month int) (Month
 		PointsSaved:             totals.PointsSaved,
 		ReceivableOutstanding:   outstanding.ReceivableOutstanding,
 		PayableOutstanding:      outstanding.PayableOutstanding,
+		VariableBudget:          variableBudget,
+		VariableRemaining:       variableRemaining,
+		BudgetBurnRate:          budgetBurnRate,
 		DailyVariableCumulative: series,
 		CategoryBreakdown:       breakdown,
 	}, nil

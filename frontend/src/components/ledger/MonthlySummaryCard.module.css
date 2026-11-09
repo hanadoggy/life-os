@@ -84,10 +84,76 @@
   color: var(--text-muted);
 }
 
+.cellHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.burnBadge {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+}
+
+.burnBadgeOver {
+  color: var(--color-accent);
+  background: var(--color-accent-tint);
+}
+
 .cellValue {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.budgetMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.budgetCaption {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.budgetRemaining {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.budgetRemainingOver {
+  color: var(--color-accent);
+}
+
+.budgetBarTrack {
+  width: 100%;
+  height: 3px;
+  background: var(--bg-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.budgetBarFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width var(--duration-fast) var(--ease-snappy);
+}
+
+.budgetBarOver {
+  background: var(--color-accent);
 }
 
 .settlementBanner {

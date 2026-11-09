@@ -16,6 +16,7 @@ import (
 	"github.com/hanadoggy/life-os/backend/internal/db"
 	"github.com/hanadoggy/life-os/backend/internal/httpx"
 	"github.com/hanadoggy/life-os/backend/internal/modules/ledger"
+	"github.com/hanadoggy/life-os/backend/internal/modules/living"
 	"github.com/hanadoggy/life-os/backend/internal/platform/auth"
 	"github.com/hanadoggy/life-os/backend/internal/platform/gsheets"
 	"github.com/jackc/pgx/v5"
@@ -115,6 +116,10 @@ func main() {
 	ledgerSvc := ledger.NewService(dbPool, cfg.Location, sheetWakeCh)
 	ledgerHandler := ledger.NewHandler(ledgerSvc, logger, cfg.Location)
 	ledgerHandler.RegisterRoutes(apiMux)
+
+	livingSvc := living.NewService(dbPool, cfg.Location, sheetWakeCh)
+	livingHandler := living.NewHandler(livingSvc, logger, cfg.Location)
+	livingHandler.RegisterRoutes(apiMux)
 
 	rootMux.Handle("/api/v1/", httpx.Chain(
 		apiMux,

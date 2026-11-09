@@ -1,5 +1,7 @@
 import type {
   AuthUser,
+  BudgetItem,
+  BudgetOverview,
   Category,
   CreatePresetInput,
   CreateTransactionInput,
@@ -12,6 +14,7 @@ import type {
   SettlementsOverview,
   Transaction,
   UpdateTransactionInput,
+  UpsertBudgetInput,
 } from "./types";
 import { navigate } from "../router/useRoute";
 
@@ -28,7 +31,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
   skipAuthRedirect?: boolean;
@@ -199,6 +202,30 @@ export const api = {
         body: { settled },
       }
     );
+  },
+
+  // Living: Monthly Variable Budgets
+  getBudgetOverview(year: number, month: number): Promise<BudgetOverview> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    return request<BudgetOverview>(`/api/v1/living/budgets?${params.toString()}`);
+  },
+  upsertBudget(input: UpsertBudgetInput): Promise<BudgetItem> {
+    return request<BudgetItem>("/api/v1/living/budgets", {
+      method: "PUT",
+      body: input,
+    });
+  },
+  deleteBudget(year: number, month: number): Promise<void> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    return request<void>(`/api/v1/living/budgets?${params.toString()}`, {
+      method: "DELETE",
+    });
   },
 };
 

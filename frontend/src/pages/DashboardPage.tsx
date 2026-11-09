@@ -56,7 +56,10 @@ function DashboardContent({
         selectedCategoryId={selectedCategoryId}
         onToggleCategory={handleToggleCategory}
       />
-      <CumulativeChart points={summary.daily_variable_cumulative} />
+      <CumulativeChart
+        points={summary.daily_variable_cumulative}
+        variableBudget={summary.variable_budget}
+      />
       <TransactionList
         transactions={transactions}
         categories={categories}
