@@ -231,7 +231,8 @@ export function SettlementInlineForm({
                     peer_name: e.target.value,
                     direction: "PAYABLE",
                     amount: Math.max(0, netAmount),
-                    method: "PayPay",
+                    method: settlements[0]?.method || "PayPay",
+                    memo: settlements[0]?.memo,
                   },
                 ])
               }

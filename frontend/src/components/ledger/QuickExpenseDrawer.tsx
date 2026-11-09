@@ -139,7 +139,8 @@ export function QuickExpenseDrawer({
           peer_name: prev[0]?.peer_name || "",
           direction: "PAYABLE",
           amount: netAmount,
-          method: "PayPay",
+          method: prev[0]?.method || "PayPay",
+          memo: prev[0]?.memo,
         },
       ]);
     } else if (
@@ -230,20 +231,21 @@ export function QuickExpenseDrawer({
 
       try {
         if (editingTransaction) {
+          const isIncome = editingTransaction.kind === "INCOME";
           await api.updateTransaction(editingTransaction.id, {
             tx_date: txDate,
-            kind: "EXPENSE",
-            expense_type: expenseType,
+            kind: editingTransaction.kind,
+            expense_type: isIncome ? undefined : expenseType,
             category_id: categoryID,
             title: title.trim(),
-            memo: memo.trim() || undefined,
+            memo: memo.trim(),
             ...(hasSettledItems
               ? {}
               : {
                   gross_amount: grossAmount,
-                  points_used: pointsUsed,
+                  points_used: isIncome ? 0 : pointsUsed,
                   payment_method_id: paymentMethodID,
-                  settlements: activeSettlements,
+                  settlements: isIncome ? [] : activeSettlements,
                 }),
           });
         } else {
