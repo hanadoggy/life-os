@@ -76,7 +76,6 @@ export function TransactionList({
               { key: "ALL", label: "すべて" },
               { key: "VARIABLE", label: "変動費" },
               { key: "FIXED", label: "固定費" },
-              { key: "IRREGULAR", label: "非定期" },
             ] as { key: FilterTab; label: string }[]
           ).map((tab) => (
             <button

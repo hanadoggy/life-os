@@ -29,11 +29,73 @@ type ExpensePreset struct {
 	UpdatedAt              time.Time   `json:"updated_at"`
 }
 
+type FurusatoDonation struct {
+	ID                  pgtype.UUID `json:"id"`
+	TaxYear             int32       `json:"tax_year"`
+	DonatedAt           pgtype.Date `json:"donated_at"`
+	Municipality        string      `json:"municipality"`
+	ReturnGift          string      `json:"return_gift"`
+	Amount              int32       `json:"amount"`
+	OnestopMethod       string      `json:"onestop_method"`
+	OnestopCompleted    bool        `json:"onestop_completed"`
+	CompletedAt         *time.Time  `json:"completed_at"`
+	ApplicationDeadline pgtype.Date `json:"application_deadline"`
+	TransactionID       pgtype.UUID `json:"transaction_id"`
+	Memo                pgtype.Text `json:"memo"`
+	CreatedAt           time.Time   `json:"created_at"`
+	UpdatedAt           time.Time   `json:"updated_at"`
+}
+
+type FurusatoProfile struct {
+	TaxYear         int32     `json:"tax_year"`
+	GrossIncome     int32     `json:"gross_income"`
+	SocialInsurance int32     `json:"social_insurance"`
+	IdecoAnnual     int32     `json:"ideco_annual"`
+	FamilyStatus    string    `json:"family_status"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type MonthlyBudget struct {
+	Year           int32       `json:"year"`
+	Month          int32       `json:"month"`
+	VariableBudget int32       `json:"variable_budget"`
+	Memo           pgtype.Text `json:"memo"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
 type PaymentMethod struct {
 	ID        int32  `json:"id"`
 	Name      string `json:"name"`
 	SortOrder int32  `json:"sort_order"`
 	IsActive  bool   `json:"is_active"`
+}
+
+type RecurringExecution struct {
+	ID            pgtype.UUID `json:"id"`
+	RuleID        pgtype.UUID `json:"rule_id"`
+	TargetPeriod  string      `json:"target_period"`
+	TransactionID pgtype.UUID `json:"transaction_id"`
+	ExecutedAt    time.Time   `json:"executed_at"`
+}
+
+type RecurringRule struct {
+	ID              pgtype.UUID `json:"id"`
+	Title           string      `json:"title"`
+	ExpenseType     string      `json:"expense_type"`
+	CategoryID      int32       `json:"category_id"`
+	Amount          int32       `json:"amount"`
+	PaymentMethodID int32       `json:"payment_method_id"`
+	Frequency       string      `json:"frequency"`
+	DayOfMonth      int32       `json:"day_of_month"`
+	MonthOfYear     pgtype.Int4 `json:"month_of_year"`
+	AutoCreate      bool        `json:"auto_create"`
+	IsSubscription  bool        `json:"is_subscription"`
+	Memo            pgtype.Text `json:"memo"`
+	SortOrder       int32       `json:"sort_order"`
+	IsActive        bool        `json:"is_active"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
 }
 
 type Session struct {

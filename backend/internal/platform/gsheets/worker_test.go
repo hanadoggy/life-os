@@ -122,6 +122,14 @@ func TestLayoutAndParsing(t *testing.T) {
 		t.Fatalf("expected month 2 for February, got %d (%v)", m, ok)
 	}
 
+	// 1b. Legacy 非定期/IRREGULAR expense type normalization -> VARIABLE
+	for _, rawType := range []string{"非定期", "特別", "臨時", "비정기", "IRREGULAR"} {
+		k, et := NormalizeExpenseType(rawType)
+		if k != "EXPENSE" || et != "VARIABLE" {
+			t.Errorf("NormalizeExpenseType(%q) = (%q, %q), want (EXPENSE, VARIABLE)", rawType, k, et)
+		}
+	}
+
 	// 2. Category fuzzy normalization (A..F sheet variations -> 15 LifeOS codes)
 	catTests := map[string]string{
 		"食料品":       "GROCERIES",

@@ -11,8 +11,7 @@ export function MonthlySummaryCard({
   summary,
   onNavigateSettlements,
 }: MonthlySummaryCardProps) {
-  const totalMyShare =
-    summary.variable_total + summary.fixed_total + summary.irregular_total;
+  const totalMyShare = summary.variable_total + summary.fixed_total;
 
   return (
     <section className={styles.card} aria-label="月次収支サマリー">
@@ -49,13 +48,6 @@ export function MonthlySummaryCard({
           <span className={styles.cellLabel}>固定費</span>
           <span className={`${styles.cellValue} tabular`}>
             {formatJPY(summary.fixed_total)}
-          </span>
-        </div>
-
-        <div className={styles.breakdownCell}>
-          <span className={styles.cellLabel}>非定期</span>
-          <span className={`${styles.cellValue} tabular`}>
-            {formatJPY(summary.irregular_total)}
           </span>
         </div>
       </div>

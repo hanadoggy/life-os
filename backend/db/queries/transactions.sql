@@ -137,7 +137,6 @@ WHERE id = $1
 SELECT
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'FIXED' THEN my_share ELSE 0 END), 0)::INT AS fixed_total,
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'VARIABLE' THEN my_share ELSE 0 END), 0)::INT AS variable_total,
-    COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'IRREGULAR' THEN my_share ELSE 0 END), 0)::INT AS irregular_total,
     COALESCE(SUM(CASE WHEN kind = 'INCOME' THEN my_share ELSE 0 END), 0)::INT AS income_total,
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' THEN points_used ELSE 0 END), 0)::INT AS points_saved
 FROM v_ledger_entries

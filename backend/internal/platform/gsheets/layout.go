@@ -106,9 +106,8 @@ var CategoryCodeToJapanese = map[string]string{
 
 // ExpenseTypeCodeToJapanese maps DB expense_type to Japanese display names in Column B.
 var ExpenseTypeCodeToJapanese = map[string]string{
-	"FIXED":     "固定費",
-	"VARIABLE":  "変動費",
-	"IRREGULAR": "非定期",
+	"FIXED":    "固定費",
+	"VARIABLE": "変動費",
 }
 
 // NormalizeExpenseType maps Japanese/Korean/English expense_type labels from Column B to LifeOS codes.
@@ -122,7 +121,7 @@ func NormalizeExpenseType(raw string) (kind string, expenseType string) {
 	case strings.Contains(s, "固定") || strings.Contains(s, "고정") || upper == "FIXED":
 		return "EXPENSE", "FIXED"
 	case strings.Contains(s, "非定期") || strings.Contains(s, "特別") || strings.Contains(s, "臨時") || strings.Contains(s, "비정기") || upper == "IRREGULAR":
-		return "EXPENSE", "IRREGULAR"
+		return "EXPENSE", "VARIABLE"
 	default:
 		return "EXPENSE", "VARIABLE"
 	}
@@ -258,7 +257,7 @@ type LedgerRowData struct {
 	TxID            string // UUID string written to TxIDColumn (e.g. Z)
 	TxDate          string // Column A: YYYY-MM-DD
 	Kind            string // EXPENSE or INCOME
-	ExpenseTypeCode string // FIXED, VARIABLE, IRREGULAR
+	ExpenseTypeCode string // FIXED, VARIABLE
 	CategoryCode    string // GROCERIES, COMMUNICATION, etc.
 	Title           string // Column D: Store / Item name
 	GrossAmount     int32
@@ -272,7 +271,7 @@ type LedgerRowData struct {
 // FormatRowValues builds the A..F values slice for the monthly sheet tab.
 // Column order:
 //   - A: Date (YYYY-MM-DD)
-//   - B: Expense Type (固定費 / 変動費 / 非定期)
+//   - B: Expense Type (固定費 / 変動費)
 //   - C: Category (食料品, 通信費, etc.)
 //   - D: Title / Store (項目)
 //   - E: Amount (my_share integer)

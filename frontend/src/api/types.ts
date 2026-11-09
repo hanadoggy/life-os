@@ -1,5 +1,5 @@
 export type TransactionKind = "EXPENSE" | "INCOME";
-export type ExpenseType = "FIXED" | "VARIABLE" | "IRREGULAR";
+export type ExpenseType = "FIXED" | "VARIABLE";
 export type SettlementDirection = "RECEIVABLE" | "PAYABLE";
 
 export interface FieldError {
@@ -132,7 +132,6 @@ export interface MonthlySummary {
   month: number;
   fixed_total: number;
   variable_total: number;
-  irregular_total: number;
   income_total: number;
   points_saved: number;
   receivable_outstanding: number;
@@ -198,7 +197,6 @@ const PAYMENT_METHOD_JA_MAP: Record<string, string> = {
 const EXPENSE_TYPE_JA_MAP: Record<ExpenseType, string> = {
   VARIABLE: "変動費",
   FIXED: "固定費",
-  IRREGULAR: "非定期",
 };
 
 export function formatCategoryName(code: string): string {

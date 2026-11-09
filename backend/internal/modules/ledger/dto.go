@@ -16,9 +16,8 @@ const (
 	KindExpense = "EXPENSE"
 	KindIncome  = "INCOME"
 
-	ExpenseTypeFixed     = "FIXED"
-	ExpenseTypeVariable  = "VARIABLE"
-	ExpenseTypeIrregular = "IRREGULAR"
+	ExpenseTypeFixed    = "FIXED"
+	ExpenseTypeVariable = "VARIABLE"
 
 	DirectionReceivable = "RECEIVABLE"
 	DirectionPayable    = "PAYABLE"
@@ -152,7 +151,6 @@ type MonthlySummaryResponse struct {
 	Month                   int                    `json:"month"`
 	FixedTotal              int32                  `json:"fixed_total"`
 	VariableTotal           int32                  `json:"variable_total"`
-	IrregularTotal          int32                  `json:"irregular_total"`
 	IncomeTotal             int32                  `json:"income_total"`
 	PointsSaved             int32                  `json:"points_saved"`
 	ReceivableOutstanding   int32                  `json:"receivable_outstanding"`
@@ -206,7 +204,7 @@ func (r *CreatePresetRequest) Validate() error {
 		fields = append(fields, httpx.FieldError{Field: "title", Message: "must be between 1 and 100 characters"})
 	}
 	if !isValidExpenseType(r.ExpenseType) {
-		fields = append(fields, httpx.FieldError{Field: "expense_type", Message: "must be FIXED, VARIABLE, or IRREGULAR"})
+		fields = append(fields, httpx.FieldError{Field: "expense_type", Message: "must be FIXED or VARIABLE"})
 	}
 	if r.CategoryID <= 0 {
 		fields = append(fields, httpx.FieldError{Field: "category_id", Message: "must be a positive integer"})
@@ -270,7 +268,7 @@ type UpdateSettlementStatusRequest struct {
 
 func isValidExpenseType(v string) bool {
 	switch v {
-	case ExpenseTypeFixed, ExpenseTypeVariable, ExpenseTypeIrregular:
+	case ExpenseTypeFixed, ExpenseTypeVariable:
 		return true
 	default:
 		return false

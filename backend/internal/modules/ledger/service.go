@@ -77,7 +77,7 @@ func ValidateTransactionAccounting(
 		if expenseType == nil || !isValidExpenseType(*expenseType) {
 			fields = append(fields, httpx.FieldError{
 				Field:   "expense_type",
-				Message: "must be FIXED, VARIABLE, or IRREGULAR when kind is EXPENSE",
+				Message: "must be FIXED or VARIABLE when kind is EXPENSE",
 			})
 		}
 	case KindIncome:
@@ -431,7 +431,7 @@ func (s *Service) ListTransactions(ctx context.Context, year, month int, expense
 		if !isValidExpenseType(et) {
 			return nil, newValidationError(
 				"invalid expense_type filter",
-				httpx.FieldError{Field: "expense_type", Message: "must be FIXED, VARIABLE, or IRREGULAR"},
+				httpx.FieldError{Field: "expense_type", Message: "must be FIXED or VARIABLE"},
 			)
 		}
 		expFilter = pgtype.Text{String: et, Valid: true}
@@ -801,7 +801,6 @@ func (s *Service) GetMonthlySummary(ctx context.Context, year, month int) (Month
 		Month:                   month,
 		FixedTotal:              totals.FixedTotal,
 		VariableTotal:           totals.VariableTotal,
-		IrregularTotal:          totals.IrregularTotal,
 		IncomeTotal:             totals.IncomeTotal,
 		PointsSaved:             totals.PointsSaved,
 		ReceivableOutstanding:   outstanding.ReceivableOutstanding,

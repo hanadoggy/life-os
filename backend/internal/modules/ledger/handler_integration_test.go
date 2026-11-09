@@ -264,7 +264,27 @@ func TestLedgerEndToEndIntegration(t *testing.T) {
 		t.Fatalf("expected 200 OK when modifying title only, got %d: %s", resp.StatusCode, string(body))
 	}
 
-	// 7. Soft-delete transaction and verify DELETE outbox entry + 404 on subsequent GET
+	// 7. Verify deprecated IRREGULAR expense_type returns 422 on POST and GET filter
+	resp, _ = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/transactions", nil, map[string]any{
+		"tx_date":           "2026-11-04",
+		"kind":              "EXPENSE",
+		"expense_type":      "IRREGULAR",
+		"category_id":       groceriesCatID,
+		"title":             "비정기 테스트",
+		"gross_amount":      1000,
+		"points_used":       0,
+		"payment_method_id": creditCardID,
+	})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("POST /transactions with IRREGULAR status = %d, want 422", resp.StatusCode)
+	}
+
+	resp, _ = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11&expense_type=IRREGULAR", nil, nil)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("GET /transactions?expense_type=IRREGULAR status = %d, want 422", resp.StatusCode)
+	}
+
+	// 8. Soft-delete transaction and verify DELETE outbox entry + 404 on subsequent GET
 	resp, _ = doJSONRequest(t, client, http.MethodDelete, ts.URL+"/api/v1/transactions/"+createdTx.ID, nil, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("DELETE /transactions status = %d, want 204", resp.StatusCode)

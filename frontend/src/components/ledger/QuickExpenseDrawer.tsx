@@ -353,7 +353,7 @@ export function QuickExpenseDrawer({
           {/* Expense Type & Date Row */}
           <div className={styles.row2Col}>
             <div className={styles.segmented}>
-              {(["VARIABLE", "FIXED", "IRREGULAR"] as ExpenseType[]).map((et) => (
+              {(["VARIABLE", "FIXED"] as ExpenseType[]).map((et) => (
                 <button
                   key={et}
                   type="button"

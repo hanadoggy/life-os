@@ -190,7 +190,6 @@ const getMonthlyTotals = `-- name: GetMonthlyTotals :one
 SELECT
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'FIXED' THEN my_share ELSE 0 END), 0)::INT AS fixed_total,
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'VARIABLE' THEN my_share ELSE 0 END), 0)::INT AS variable_total,
-    COALESCE(SUM(CASE WHEN kind = 'EXPENSE' AND expense_type = 'IRREGULAR' THEN my_share ELSE 0 END), 0)::INT AS irregular_total,
     COALESCE(SUM(CASE WHEN kind = 'INCOME' THEN my_share ELSE 0 END), 0)::INT AS income_total,
     COALESCE(SUM(CASE WHEN kind = 'EXPENSE' THEN points_used ELSE 0 END), 0)::INT AS points_saved
 FROM v_ledger_entries
@@ -204,11 +203,10 @@ type GetMonthlyTotalsParams struct {
 }
 
 type GetMonthlyTotalsRow struct {
-	FixedTotal     int32 `json:"fixed_total"`
-	VariableTotal  int32 `json:"variable_total"`
-	IrregularTotal int32 `json:"irregular_total"`
-	IncomeTotal    int32 `json:"income_total"`
-	PointsSaved    int32 `json:"points_saved"`
+	FixedTotal    int32 `json:"fixed_total"`
+	VariableTotal int32 `json:"variable_total"`
+	IncomeTotal   int32 `json:"income_total"`
+	PointsSaved   int32 `json:"points_saved"`
 }
 
 func (q *Queries) GetMonthlyTotals(ctx context.Context, arg GetMonthlyTotalsParams) (GetMonthlyTotalsRow, error) {
@@ -217,7 +215,6 @@ func (q *Queries) GetMonthlyTotals(ctx context.Context, arg GetMonthlyTotalsPara
 	err := row.Scan(
 		&i.FixedTotal,
 		&i.VariableTotal,
-		&i.IrregularTotal,
 		&i.IncomeTotal,
 		&i.PointsSaved,
 	)
