@@ -1,12 +1,12 @@
 # AGENTS.md — LifeOS Engineering & Design Guidelines
 
-본 문서는 **LifeOS** 저장소에서 작업하는 AI 에이전트와 개발자가 전 Phase에 걸쳐 일관되게 준수해야 하는 아키텍처, 도메인 불변식, UI/UX 디자인 시스템의 핵심 기준이다. 세부 명세는 [`docs/PROJECT_MASTER_PLAN.md`](./docs/PROJECT_MASTER_PLAN.md)와 [`docs/PHASE1_SPECIFICATION.md`](./docs/PHASE1_SPECIFICATION.md)를 참조한다.
+본 문서는 **LifeOS** 저장소에서 작업하는 AI 에이전트와 개발자가 전 Phase에 걸쳐 일관되게 준수해야 하는 아키텍처, 도메인 불변식, UI/UX 디자인 시스템의 핵심 기준이다. 세부 명세는 [`docs/PROJECT_MASTER_PLAN.md`](./docs/PROJECT_MASTER_PLAN.md), [`docs/PHASE1_SPECIFICATION.md`](./docs/PHASE1_SPECIFICATION.md), [`docs/PHASE2_SPECIFICATION.md`](./docs/PHASE2_SPECIFICATION.md)를 참조한다.
 
 ---
 
 ## 1. 프로젝트 개요 및 엔지니어링 원칙
 
-- **정체성:** 도쿄 거주 1인 사용자를 위한 올인원 라이프 매니지먼트 시스템 (가계부·PayPay 정산·Google Sheets 동기화 → 고정비·예산·공과금·후루사토 납세 → 경제 브리핑·포트폴리오 → 콘서트 추첨 칸반·라이프로그).
+- **정체성:** 도쿄 거주 1인 사용자를 위한 올인원 라이프 매니지먼트 시스템 (가계부·PayPay 정산·Google Sheets 동기화 → 고정비·구독·예산·후루사토 납세 → 경제 브리핑·포트폴리오 → 콘서트 추첨 칸반·라이프로그).
 - **아키텍처:** **Modular Monolith** (단일 Go 백엔드 + 단일 React 19 PWA + 단일 PostgreSQL 18). 모듈(`ledger`, `living`, `market`, `culture`)은 해당 Phase에 진입할 때만 생성한다(YAGNI).
 - **Standard-First & 직접 구현 원칙:**
   - **Backend:** 웹 프레임워크 없이 Go 표준 `net/http` (`http.ServeMux`), `encoding/json`, `log/slog`, `context`, `time`을 사용한다.
@@ -32,9 +32,10 @@
 
 1. **시간대 (Timezone):** 모든 날짜(`tx_date` 기본값, 월 경계, 정기 스케줄, 백업)는 **`Asia/Tokyo` (JST)** 기준이다. DB 타임스탬프는 `TIMESTAMPTZ`로 저장한다.
 2. **가계부 회계 모델 (`v_ledger_entries` 단일 기준):**
+   - 지출 유형(`expense_type`)은 **`FIXED`(고정비 / `固定費`)** 와 **`VARIABLE`(변동비 / `変動費`)** 두 가지로만 분류한다 (`IRREGULAR` 비정기는 변동비에 통합).
    - `net_amount = gross_amount - points_used` (`points_used <= gross_amount`)
    - `my_share = net_amount - RECEIVABLE 합계` (`RECEIVABLE 합계 <= net_amount`)
-   - 대시보드의 고정비·변동비·비정기 집계는 정산 완료 여부(`settled_at`)와 무관하게 **발생 시점의 `my_share`** 를 기준으로 한다.
+   - 대시보드의 고정비·변동비 및 카테고리별 집계는 정산 완료 여부(`settled_at`)와 무관하게 **발생 시점의 `my_share`** 를 기준으로 한다.
    - 동료 대납(`PAYABLE`)은 결제수단 `ADVANCE`(`立替`)로 내 몫만 기록하며, `net_amount`와 동일한 금액의 `PAYABLE` 정산 1건이 반드시 동반되어야 한다(`payment_method == ADVANCE` $\iff$ `PAYABLE` 정산). 정산금 송금·수취 행위 자체는 별도 지출/수입으로 기록하지 않는다.
    - 이미 정산 완료(`settled_at IS NOT NULL`)된 항목이 포함된 트랜잭션의 금액이나 정산 목록 수정 시도는 `409 Conflict`로 거부한다.
 3. **다국어/식별자 규칙:**
