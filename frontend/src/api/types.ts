@@ -179,6 +179,77 @@ export interface UpsertBudgetInput {
   memo?: string;
 }
 
+export type RecurringFrequency = "MONTHLY" | "YEARLY";
+
+export interface RecurringRule {
+  id: string;
+  title: string;
+  expense_type: ExpenseType;
+  category_id: number;
+  amount: number;
+  payment_method_id: number;
+  frequency: RecurringFrequency;
+  day_of_month: number;
+  month_of_year: number | null;
+  auto_create: boolean;
+  is_subscription: boolean;
+  memo?: string;
+  sort_order: number;
+  is_active: boolean;
+  executed_in_month: boolean;
+  transaction_id?: string;
+  next_billing_date: string;
+  days_until: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecurringRulesOverview {
+  year: number;
+  month: number;
+  items: RecurringRule[];
+}
+
+export interface CreateRecurringRuleInput {
+  title: string;
+  expense_type?: ExpenseType;
+  category_id: number;
+  amount: number;
+  payment_method_id: number;
+  frequency: RecurringFrequency;
+  day_of_month: number;
+  month_of_year?: number | null;
+  auto_create?: boolean;
+  is_subscription?: boolean;
+  memo?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateRecurringRuleInput {
+  title?: string;
+  expense_type?: ExpenseType;
+  category_id?: number;
+  amount?: number;
+  payment_method_id?: number;
+  frequency?: RecurringFrequency;
+  day_of_month?: number;
+  month_of_year?: number | null;
+  auto_create?: boolean;
+  is_subscription?: boolean;
+  memo?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface SyncRecurringRulesResult {
+  year: number;
+  month: number;
+  target_period: string;
+  created_count: number;
+  transaction_ids: string[];
+}
+
 export interface SettlementItem {
   id: string;
   transaction_id: string;

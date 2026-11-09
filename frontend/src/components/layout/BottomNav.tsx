@@ -1,4 +1,4 @@
-import { ArrowLeftRight, LayoutGrid, Plus } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, LayoutGrid, Plus } from "lucide-react";
 import { navigate, useRoute } from "../../router/useRoute";
 import styles from "./BottomNav.module.css";
 
@@ -25,6 +25,17 @@ export function BottomNav({
         >
           <LayoutGrid size={18} strokeWidth={1.75} />
           <span className={styles.tabLabel}>ダッシュボード</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${
+            currentPath === "/living" ? styles.active : ""
+          }`}
+          onClick={() => navigate("/living")}
+        >
+          <CalendarClock size={18} strokeWidth={1.75} />
+          <span className={styles.tabLabel}>生活・固定費</span>
         </button>
 
         <button
@@ -58,4 +69,3 @@ export function BottomNav({
     </nav>
   );
 }
-

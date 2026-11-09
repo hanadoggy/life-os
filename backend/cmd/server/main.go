@@ -137,6 +137,13 @@ func main() {
 		sessionMgr.RunCleanupWorker(workerCtx)
 	}()
 
+	recurringScheduler := living.NewScheduler(livingSvc, logger, cfg.Location)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		recurringScheduler.Run(workerCtx)
+	}()
+
 	if cfg.SheetsEnabled {
 		sheetsClient, err := gsheets.NewADCClient(workerCtx)
 		if err != nil {

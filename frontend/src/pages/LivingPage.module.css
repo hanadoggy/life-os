@@ -1,0 +1,77 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tabBar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 2.6rem;
+}
+
+.tabBtn {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--duration-fast) var(--ease-snappy),
+    color var(--duration-fast) var(--ease-snappy);
+}
+
+.tabBtn:last-child {
+  border-right: none;
+}
+
+.tabActive {
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loadingState {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.placeholderCard {
+  padding: 36px 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.placeholderEyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.placeholderTitle {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.placeholderText {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+

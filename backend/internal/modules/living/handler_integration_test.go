@@ -242,3 +242,217 @@ func TestBudgetsAndLedgerSummaryIntegration(t *testing.T) {
 	}
 }
 
+func TestRecurringRulesAndSchedulerIdempotencyIntegration(t *testing.T) {
+	ts, pool := setupTestServer(t)
+	client := ts.Client()
+	ctx := context.Background()
+
+	// Fetch reference categories and payment methods
+	resp, body := doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/categories", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /categories status = %d", resp.StatusCode)
+	}
+	var catWrap struct {
+		Items []ledger.CategoryResponse `json:"items"`
+	}
+	_ = json.Unmarshal(body, &catWrap)
+
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/payment-methods", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /payment-methods status = %d", resp.StatusCode)
+	}
+	var pmWrap struct {
+		Items []ledger.PaymentMethodResponse `json:"items"`
+	}
+	_ = json.Unmarshal(body, &pmWrap)
+
+	var rentCatID, subCatID int32
+	for _, c := range catWrap.Items {
+		if c.Name == "RENT" {
+			rentCatID = c.ID
+		} else if c.Name == "SUBSCRIPTION" {
+			subCatID = c.ID
+		}
+	}
+	if rentCatID == 0 {
+		rentCatID = catWrap.Items[0].ID
+	}
+	if subCatID == 0 {
+		subCatID = catWrap.Items[0].ID
+	}
+
+	var creditCardPMID, advancePMID int32
+	for _, pm := range pmWrap.Items {
+		if pm.Name == "CREDIT_CARD" {
+			creditCardPMID = pm.ID
+		} else if pm.Name == "ADVANCE" {
+			advancePMID = pm.ID
+		}
+	}
+
+	// 1. Reject ADVANCE payment method on recurring rule creation (422)
+	resp, _ = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules", map[string]any{
+		"title":             "不正な立替ルール",
+		"expense_type":      "FIXED",
+		"category_id":       rentCatID,
+		"amount":            50000,
+		"payment_method_id": advancePMID,
+		"frequency":         "MONTHLY",
+		"day_of_month":      1,
+	})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for ADVANCE payment method in recurring rule, got %d", resp.StatusCode)
+	}
+
+	// 2. Create Rule A: Monthly rent on day 31 (tests end-of-month clamping: e.g. 2026-02 -> 2026-02-28)
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules", map[string]any{
+		"title":             "家賃・管理費",
+		"expense_type":      "FIXED",
+		"category_id":       rentCatID,
+		"amount":            98000,
+		"payment_method_id": creditCardPMID,
+		"frequency":         "MONTHLY",
+		"day_of_month":      31,
+		"auto_create":       true,
+		"is_subscription":   false,
+		"memo":              "月末引き落とし",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /recurring-rules (rent) status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var rentRule RecurringRuleResponse
+	_ = json.Unmarshal(body, &rentRule)
+
+	// 3. Create Rule B: Yearly subscription in February (month_of_year = 2, day_of_month = 15)
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules", map[string]any{
+		"title":             "Amazon Prime 年会費",
+		"expense_type":      "FIXED",
+		"category_id":       subCatID,
+		"amount":            5900,
+		"payment_method_id": creditCardPMID,
+		"frequency":         "YEARLY",
+		"day_of_month":      15,
+		"month_of_year":     2,
+		"auto_create":       true,
+		"is_subscription":   true,
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /recurring-rules (prime) status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var primeRule RecurringRuleResponse
+	_ = json.Unmarshal(body, &primeRule)
+
+	// 4. Create Rule C: Manual subscription (auto_create = false) -> should NOT be auto-created by sync
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules", map[string]any{
+		"title":             "Spotify",
+		"expense_type":      "FIXED",
+		"category_id":       subCatID,
+		"amount":            980,
+		"payment_method_id": creditCardPMID,
+		"frequency":         "MONTHLY",
+		"day_of_month":      5,
+		"auto_create":       false,
+		"is_subscription":   true,
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /recurring-rules (spotify) status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var spotifyRule RecurringRuleResponse
+	_ = json.Unmarshal(body, &spotifyRule)
+
+	// 5. Sync 2026-02 (February 2026): both Rule A (clamped to 2026-02-28) and Rule B (2026-02-15) should execute
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules/sync?year=2026&month=2", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /recurring-rules/sync status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var syncResp SyncRecurringRulesResponse
+	_ = json.Unmarshal(body, &syncResp)
+	if syncResp.CreatedCount != 2 || len(syncResp.TransactionIDs) != 2 {
+		t.Fatalf("expected CreatedCount = 2 for 2026-02, got %+v", syncResp)
+	}
+
+	// 6. Re-run Sync for 2026-02 -> idempotency check (UNIQUE(rule_id, target_period)): CreatedCount must be 0
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules/sync", map[string]any{
+		"year":  2026,
+		"month": 2,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("second POST /recurring-rules/sync status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	_ = json.Unmarshal(body, &syncResp)
+	if syncResp.CreatedCount != 0 {
+		t.Fatalf("expected CreatedCount = 0 on duplicate sync, got %+v", syncResp)
+	}
+
+	// 7. Verify 2026-02 transactions in Ledger and sheet_sync_outbox entries
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=2", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /transactions?year=2026&month=2 status = %d", resp.StatusCode)
+	}
+	var txList struct {
+		Items []ledger.TransactionResponse `json:"items"`
+	}
+	_ = json.Unmarshal(body, &txList)
+	if len(txList.Items) != 2 {
+		t.Fatalf("expected 2 transactions in 2026-02, got %d", len(txList.Items))
+	}
+	// First item ordered by tx_date DESC should be clamped rent on 2026-02-28
+	if txList.Items[0].TxDate != "2026-02-28" || txList.Items[0].GrossAmount != 98000 {
+		t.Fatalf("expected clamped rent tx on 2026-02-28 with 98000, got %+v", txList.Items[0])
+	}
+	if txList.Items[1].TxDate != "2026-02-15" || txList.Items[1].GrossAmount != 5900 {
+		t.Fatalf("expected prime yearly tx on 2026-02-15 with 5900, got %+v", txList.Items[1])
+	}
+
+	var outboxCount int
+	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM sheet_sync_outbox WHERE op = 'UPSERT'").Scan(&outboxCount); err != nil {
+		t.Fatalf("count sheet_sync_outbox: %v", err)
+	}
+	if outboxCount != 2 {
+		t.Fatalf("expected 2 sheet_sync_outbox UPSERT rows, got %d", outboxCount)
+	}
+
+	// 8. Verify GET /api/v1/living/recurring-rules?year=2026&month=2 marks executed_in_month = true for Rule A & B
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/living/recurring-rules?year=2026&month=2", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /recurring-rules status = %d", resp.StatusCode)
+	}
+	var rulesOverview RecurringRulesOverviewResponse
+	_ = json.Unmarshal(body, &rulesOverview)
+	if len(rulesOverview.Items) != 3 {
+		t.Fatalf("expected 3 rules in overview, got %d", len(rulesOverview.Items))
+	}
+	for _, item := range rulesOverview.Items {
+		switch item.ID {
+		case rentRule.ID, primeRule.ID:
+			if !item.ExecutedInMonth || item.TransactionID == nil {
+				t.Fatalf("expected rule %s to have executed_in_month=true in 2026-02, got %+v", item.Title, item)
+			}
+		case spotifyRule.ID:
+			if item.ExecutedInMonth {
+				t.Fatalf("expected manual rule Spotify to have executed_in_month=false")
+			}
+		}
+	}
+
+	// 9. Update Rule C (Spotify) amount and delete it
+	resp, body = doJSONRequest(t, client, http.MethodPatch, ts.URL+"/api/v1/living/recurring-rules/"+spotifyRule.ID, map[string]any{
+		"amount":      1080,
+		"auto_create": true,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PATCH /recurring-rules/%s status = %d, body = %s", spotifyRule.ID, resp.StatusCode, string(body))
+	}
+	var updatedSpotify RecurringRuleResponse
+	_ = json.Unmarshal(body, &updatedSpotify)
+	if updatedSpotify.Amount != 1080 || !updatedSpotify.AutoCreate {
+		t.Fatalf("unexpected updated rule: %+v", updatedSpotify)
+	}
+
+	resp, _ = doJSONRequest(t, client, http.MethodDelete, ts.URL+"/api/v1/living/recurring-rules/"+spotifyRule.ID, nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("DELETE /recurring-rules/%s status = %d, want 204", spotifyRule.ID, resp.StatusCode)
+	}
+}
+
+

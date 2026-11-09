@@ -4,15 +4,20 @@ import type {
   BudgetOverview,
   Category,
   CreatePresetInput,
+  CreateRecurringRuleInput,
   CreateTransactionInput,
   ExpensePreset,
   ExpenseType,
   MonthlySummary,
   PaymentMethod,
   ProblemDetails,
+  RecurringRule,
+  RecurringRulesOverview,
   SettlementItem,
   SettlementsOverview,
+  SyncRecurringRulesResult,
   Transaction,
+  UpdateRecurringRuleInput,
   UpdateTransactionInput,
   UpsertBudgetInput,
 } from "./types";
@@ -226,6 +231,61 @@ export const api = {
     return request<void>(`/api/v1/living/budgets?${params.toString()}`, {
       method: "DELETE",
     });
+  },
+
+  // Living: Recurring Rules & Subscriptions
+  listRecurringRules(
+    year: number,
+    month: number
+  ): Promise<RecurringRulesOverview> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    return request<RecurringRulesOverview>(
+      `/api/v1/living/recurring-rules?${params.toString()}`
+    );
+  },
+  createRecurringRule(input: CreateRecurringRuleInput): Promise<RecurringRule> {
+    return request<RecurringRule>("/api/v1/living/recurring-rules", {
+      method: "POST",
+      body: input,
+    });
+  },
+  updateRecurringRule(
+    id: string,
+    input: UpdateRecurringRuleInput
+  ): Promise<RecurringRule> {
+    return request<RecurringRule>(
+      `/api/v1/living/recurring-rules/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: input,
+      }
+    );
+  },
+  deleteRecurringRule(id: string): Promise<void> {
+    return request<void>(
+      `/api/v1/living/recurring-rules/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+  syncRecurringRules(
+    year: number,
+    month: number
+  ): Promise<SyncRecurringRulesResult> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    return request<SyncRecurringRulesResult>(
+      `/api/v1/living/recurring-rules/sync?${params.toString()}`,
+      {
+        method: "POST",
+      }
+    );
   },
 };
 

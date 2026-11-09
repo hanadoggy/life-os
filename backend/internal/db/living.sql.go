@@ -11,6 +11,122 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createRecurringExecution = `-- name: CreateRecurringExecution :execrows
+INSERT INTO recurring_executions (
+    rule_id,
+    target_period,
+    transaction_id
+) VALUES (
+    $1, $2, $3
+)
+ON CONFLICT (rule_id, target_period) DO NOTHING
+`
+
+type CreateRecurringExecutionParams struct {
+	RuleID        pgtype.UUID `json:"rule_id"`
+	TargetPeriod  string      `json:"target_period"`
+	TransactionID pgtype.UUID `json:"transaction_id"`
+}
+
+func (q *Queries) CreateRecurringExecution(ctx context.Context, arg CreateRecurringExecutionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createRecurringExecution, arg.RuleID, arg.TargetPeriod, arg.TransactionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createRecurringRule = `-- name: CreateRecurringRule :one
+INSERT INTO recurring_rules (
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+)
+RETURNING
+    id,
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active,
+    created_at,
+    updated_at
+`
+
+type CreateRecurringRuleParams struct {
+	Title           string      `json:"title"`
+	ExpenseType     string      `json:"expense_type"`
+	CategoryID      int32       `json:"category_id"`
+	Amount          int32       `json:"amount"`
+	PaymentMethodID int32       `json:"payment_method_id"`
+	Frequency       string      `json:"frequency"`
+	DayOfMonth      int32       `json:"day_of_month"`
+	MonthOfYear     pgtype.Int4 `json:"month_of_year"`
+	AutoCreate      bool        `json:"auto_create"`
+	IsSubscription  bool        `json:"is_subscription"`
+	Memo            pgtype.Text `json:"memo"`
+	SortOrder       int32       `json:"sort_order"`
+	IsActive        bool        `json:"is_active"`
+}
+
+func (q *Queries) CreateRecurringRule(ctx context.Context, arg CreateRecurringRuleParams) (RecurringRule, error) {
+	row := q.db.QueryRow(ctx, createRecurringRule,
+		arg.Title,
+		arg.ExpenseType,
+		arg.CategoryID,
+		arg.Amount,
+		arg.PaymentMethodID,
+		arg.Frequency,
+		arg.DayOfMonth,
+		arg.MonthOfYear,
+		arg.AutoCreate,
+		arg.IsSubscription,
+		arg.Memo,
+		arg.SortOrder,
+		arg.IsActive,
+	)
+	var i RecurringRule
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ExpenseType,
+		&i.CategoryID,
+		&i.Amount,
+		&i.PaymentMethodID,
+		&i.Frequency,
+		&i.DayOfMonth,
+		&i.MonthOfYear,
+		&i.AutoCreate,
+		&i.IsSubscription,
+		&i.Memo,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteBudget = `-- name: DeleteBudget :execrows
 DELETE FROM monthly_budgets
 WHERE year = $1 AND month = $2
@@ -23,6 +139,19 @@ type DeleteBudgetParams struct {
 
 func (q *Queries) DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteBudget, arg.Year, arg.Month)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRecurringRule = `-- name: DeleteRecurringRule :execrows
+DELETE FROM recurring_rules
+WHERE id = $1
+`
+
+func (q *Queries) DeleteRecurringRule(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRecurringRule, id)
 	if err != nil {
 		return 0, err
 	}
@@ -54,6 +183,333 @@ func (q *Queries) GetBudgetByYearMonth(ctx context.Context, arg GetBudgetByYearM
 		&i.Month,
 		&i.VariableBudget,
 		&i.Memo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getRecurringExecutionByRuleAndPeriod = `-- name: GetRecurringExecutionByRuleAndPeriod :one
+SELECT
+    id,
+    rule_id,
+    target_period,
+    transaction_id,
+    executed_at
+FROM recurring_executions
+WHERE rule_id = $1
+  AND target_period = $2
+`
+
+type GetRecurringExecutionByRuleAndPeriodParams struct {
+	RuleID       pgtype.UUID `json:"rule_id"`
+	TargetPeriod string      `json:"target_period"`
+}
+
+func (q *Queries) GetRecurringExecutionByRuleAndPeriod(ctx context.Context, arg GetRecurringExecutionByRuleAndPeriodParams) (RecurringExecution, error) {
+	row := q.db.QueryRow(ctx, getRecurringExecutionByRuleAndPeriod, arg.RuleID, arg.TargetPeriod)
+	var i RecurringExecution
+	err := row.Scan(
+		&i.ID,
+		&i.RuleID,
+		&i.TargetPeriod,
+		&i.TransactionID,
+		&i.ExecutedAt,
+	)
+	return i, err
+}
+
+const getRecurringRuleByID = `-- name: GetRecurringRuleByID :one
+SELECT
+    id,
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active,
+    created_at,
+    updated_at
+FROM recurring_rules
+WHERE id = $1
+`
+
+func (q *Queries) GetRecurringRuleByID(ctx context.Context, id pgtype.UUID) (RecurringRule, error) {
+	row := q.db.QueryRow(ctx, getRecurringRuleByID, id)
+	var i RecurringRule
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ExpenseType,
+		&i.CategoryID,
+		&i.Amount,
+		&i.PaymentMethodID,
+		&i.Frequency,
+		&i.DayOfMonth,
+		&i.MonthOfYear,
+		&i.AutoCreate,
+		&i.IsSubscription,
+		&i.Memo,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listActiveAutoRecurringRules = `-- name: ListActiveAutoRecurringRules :many
+SELECT
+    id,
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active,
+    created_at,
+    updated_at
+FROM recurring_rules
+WHERE is_active = TRUE
+  AND auto_create = TRUE
+ORDER BY sort_order ASC, day_of_month ASC, created_at ASC
+`
+
+func (q *Queries) ListActiveAutoRecurringRules(ctx context.Context) ([]RecurringRule, error) {
+	rows, err := q.db.Query(ctx, listActiveAutoRecurringRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RecurringRule{}
+	for rows.Next() {
+		var i RecurringRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ExpenseType,
+			&i.CategoryID,
+			&i.Amount,
+			&i.PaymentMethodID,
+			&i.Frequency,
+			&i.DayOfMonth,
+			&i.MonthOfYear,
+			&i.AutoCreate,
+			&i.IsSubscription,
+			&i.Memo,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecurringExecutionsByPeriod = `-- name: ListRecurringExecutionsByPeriod :many
+SELECT
+    e.id,
+    e.rule_id,
+    e.target_period,
+    e.transaction_id,
+    e.executed_at
+FROM recurring_executions e
+JOIN transactions t ON t.id = e.transaction_id
+WHERE e.target_period = $1
+  AND t.deleted_at IS NULL
+`
+
+func (q *Queries) ListRecurringExecutionsByPeriod(ctx context.Context, targetPeriod string) ([]RecurringExecution, error) {
+	rows, err := q.db.Query(ctx, listRecurringExecutionsByPeriod, targetPeriod)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RecurringExecution{}
+	for rows.Next() {
+		var i RecurringExecution
+		if err := rows.Scan(
+			&i.ID,
+			&i.RuleID,
+			&i.TargetPeriod,
+			&i.TransactionID,
+			&i.ExecutedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecurringRules = `-- name: ListRecurringRules :many
+SELECT
+    id,
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active,
+    created_at,
+    updated_at
+FROM recurring_rules
+ORDER BY is_active DESC, sort_order ASC, day_of_month ASC, created_at ASC
+`
+
+func (q *Queries) ListRecurringRules(ctx context.Context) ([]RecurringRule, error) {
+	rows, err := q.db.Query(ctx, listRecurringRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RecurringRule{}
+	for rows.Next() {
+		var i RecurringRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ExpenseType,
+			&i.CategoryID,
+			&i.Amount,
+			&i.PaymentMethodID,
+			&i.Frequency,
+			&i.DayOfMonth,
+			&i.MonthOfYear,
+			&i.AutoCreate,
+			&i.IsSubscription,
+			&i.Memo,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateRecurringRule = `-- name: UpdateRecurringRule :one
+UPDATE recurring_rules
+SET
+    title = $2,
+    expense_type = $3,
+    category_id = $4,
+    amount = $5,
+    payment_method_id = $6,
+    frequency = $7,
+    day_of_month = $8,
+    month_of_year = $9,
+    auto_create = $10,
+    is_subscription = $11,
+    memo = $12,
+    sort_order = $13,
+    is_active = $14
+WHERE id = $1
+RETURNING
+    id,
+    title,
+    expense_type,
+    category_id,
+    amount,
+    payment_method_id,
+    frequency,
+    day_of_month,
+    month_of_year,
+    auto_create,
+    is_subscription,
+    memo,
+    sort_order,
+    is_active,
+    created_at,
+    updated_at
+`
+
+type UpdateRecurringRuleParams struct {
+	ID              pgtype.UUID `json:"id"`
+	Title           string      `json:"title"`
+	ExpenseType     string      `json:"expense_type"`
+	CategoryID      int32       `json:"category_id"`
+	Amount          int32       `json:"amount"`
+	PaymentMethodID int32       `json:"payment_method_id"`
+	Frequency       string      `json:"frequency"`
+	DayOfMonth      int32       `json:"day_of_month"`
+	MonthOfYear     pgtype.Int4 `json:"month_of_year"`
+	AutoCreate      bool        `json:"auto_create"`
+	IsSubscription  bool        `json:"is_subscription"`
+	Memo            pgtype.Text `json:"memo"`
+	SortOrder       int32       `json:"sort_order"`
+	IsActive        bool        `json:"is_active"`
+}
+
+func (q *Queries) UpdateRecurringRule(ctx context.Context, arg UpdateRecurringRuleParams) (RecurringRule, error) {
+	row := q.db.QueryRow(ctx, updateRecurringRule,
+		arg.ID,
+		arg.Title,
+		arg.ExpenseType,
+		arg.CategoryID,
+		arg.Amount,
+		arg.PaymentMethodID,
+		arg.Frequency,
+		arg.DayOfMonth,
+		arg.MonthOfYear,
+		arg.AutoCreate,
+		arg.IsSubscription,
+		arg.Memo,
+		arg.SortOrder,
+		arg.IsActive,
+	)
+	var i RecurringRule
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.ExpenseType,
+		&i.CategoryID,
+		&i.Amount,
+		&i.PaymentMethodID,
+		&i.Frequency,
+		&i.DayOfMonth,
+		&i.MonthOfYear,
+		&i.AutoCreate,
+		&i.IsSubscription,
+		&i.Memo,
+		&i.SortOrder,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

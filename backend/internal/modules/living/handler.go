@@ -2,6 +2,7 @@ package living
 
 import (
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -36,6 +37,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/living/budgets", h.handleGetBudgetOverview)
 	mux.HandleFunc("PUT /api/v1/living/budgets", h.handleUpsertBudget)
 	mux.HandleFunc("DELETE /api/v1/living/budgets", h.handleDeleteBudget)
+
+	// Recurring Rules & Subscriptions
+	mux.HandleFunc("GET /api/v1/living/recurring-rules", h.handleListRecurringRules)
+	mux.HandleFunc("POST /api/v1/living/recurring-rules", h.handleCreateRecurringRule)
+	mux.HandleFunc("PATCH /api/v1/living/recurring-rules/{id}", h.handleUpdateRecurringRule)
+	mux.HandleFunc("DELETE /api/v1/living/recurring-rules/{id}", h.handleDeleteRecurringRule)
+	mux.HandleFunc("POST /api/v1/living/recurring-rules/sync", h.handleSyncRecurringRules)
 }
 
 func (h *Handler) handleGetBudgetOverview(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +91,112 @@ func (h *Handler) handleDeleteBudget(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleListRecurringRules(w http.ResponseWriter, r *http.Request) {
+	year, month, err := h.parseYearMonthQuery(r, true)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.ListRecurringRules(r.Context(), year, month)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleCreateRecurringRule(w http.ResponseWriter, r *http.Request) {
+	var req CreateRecurringRuleRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+		return
+	}
+
+	resp, err := h.svc.CreateRecurringRule(r.Context(), req)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusCreated, resp)
+}
+
+func (h *Handler) handleUpdateRecurringRule(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteValidationError(w, "invalid recurring rule id", httpx.FieldError{
+			Field:   "id",
+			Message: "must be a valid UUID",
+		})
+		return
+	}
+
+	var req UpdateRecurringRuleRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+		return
+	}
+
+	resp, err := h.svc.UpdateRecurringRule(r.Context(), id, req)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleDeleteRecurringRule(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteValidationError(w, "invalid recurring rule id", httpx.FieldError{
+			Field:   "id",
+			Message: "must be a valid UUID",
+		})
+		return
+	}
+
+	if err := h.svc.DeleteRecurringRule(r.Context(), id); err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleSyncRecurringRules(w http.ResponseWriter, r *http.Request) {
+	year, month, err := h.parseYearMonthQuery(r, true)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	// Also allow optional JSON body {"year": 2026, "month": 11}
+	if r.ContentLength != 0 {
+		var req SyncRecurringRulesRequest
+		if err := httpx.DecodeJSON(w, r, &req); err != nil && !errors.Is(err, io.EOF) {
+			httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+			return
+		}
+		if req.Year != nil {
+			year = *req.Year
+		}
+		if req.Month != nil {
+			month = *req.Month
+		}
+	}
+
+	resp, err := h.svc.SyncRecurringRules(r.Context(), year, month)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) parseYearMonthQuery(r *http.Request, defaultToCurrent bool) (int, int, error) {
@@ -138,4 +252,3 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 	h.logger.ErrorContext(r.Context(), "living_handler_error", slog.String("error", err.Error()))
 	httpx.WriteError(w, http.StatusInternalServerError, "https://hanayor.com/problems/internal-error", "Internal Server Error", "An unexpected error occurred")
 }
-

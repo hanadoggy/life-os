@@ -11,6 +11,7 @@ import { QuickExpenseDrawer } from "./components/ledger/QuickExpenseDrawer";
 import { invalidateResources, useResource } from "./hooks/useResource";
 import { useTheme } from "./hooks/useTheme";
 import { DashboardPage } from "./pages/DashboardPage";
+import { LivingPage } from "./pages/LivingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SettlementsPage } from "./pages/SettlementsPage";
 import { Router } from "./router/Router";
@@ -71,6 +72,17 @@ function AuthenticatedWorkspace({
                   paymentMethods={paymentMethods}
                   onEditTransaction={onEditTransaction}
                   onOpenNewExpense={onOpenNewExpense}
+                />
+              ),
+            },
+            {
+              path: "/living",
+              render: () => (
+                <LivingPage
+                  year={year}
+                  month={month}
+                  categories={categories}
+                  paymentMethods={paymentMethods}
                 />
               ),
             },

@@ -1,0 +1,373 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.monthlyTotalBadge {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-tint);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.syncBtn {
+  height: 2.2rem;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.syncBtn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.addBtn {
+  height: 2.2rem;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.addBtn:hover {
+  background: var(--color-primary-hover);
+}
+
+.feedbackBanner {
+  padding: 10px 20px;
+  background: var(--color-primary-tint);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.errorBanner {
+  padding: 10px 20px;
+  background: var(--color-danger-tint);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.emptyState {
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptySub {
+  margin: 0 auto;
+  max-width: 32rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ruleList {
+  display: flex;
+  flex-direction: column;
+}
+
+.ruleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-snappy);
+}
+
+.ruleRow:last-child {
+  border-bottom: none;
+}
+
+.ruleRow:hover {
+  background: var(--bg-canvas);
+}
+
+.ruleInactive {
+  opacity: 0.55;
+}
+
+.ruleMain {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ruleTopLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ruleTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.typeBadge,
+.autoBadge,
+.manualBadge,
+.subBadge,
+.pausedBadge {
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+.typeBadge {
+  color: var(--text-muted);
+  background: var(--bg-canvas);
+}
+
+.autoBadge {
+  color: var(--color-primary);
+  background: var(--color-primary-tint);
+}
+
+.manualBadge {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+.subBadge {
+  color: var(--color-accent);
+  background: var(--color-accent-tint);
+}
+
+.pausedBadge {
+  color: var(--color-danger);
+  background: var(--color-danger-tint);
+}
+
+.ruleMetaLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.dot {
+  color: var(--border-strong);
+}
+
+.memoText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.ruleRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.amountCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.ruleAmount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.executedStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.nextDateText {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.editIcon {
+  color: var(--text-muted);
+}
+
+.countCaption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.timelineRow:last-child {
+  border-bottom: none;
+}
+
+.timelineRow:hover {
+  background: var(--bg-canvas);
+}
+
+.timelineLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dDayBadge {
+  min-width: 3.6rem;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 4px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.dDayImminent {
+  background: var(--color-accent-tint);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.timelineInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.timelineTitle {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timelineDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.timelineRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.timelineAmount {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.yearlySubText {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
