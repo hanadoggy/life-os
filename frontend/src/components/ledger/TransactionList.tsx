@@ -18,6 +18,8 @@ interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
   paymentMethods: PaymentMethod[];
+  selectedCategoryId: number | null;
+  onSelectCategory: (categoryId: number | null) => void;
   onEditTransaction: (tx: Transaction) => void;
   onOpenNewExpense: () => void;
 }
@@ -28,6 +30,8 @@ export function TransactionList({
   transactions,
   categories,
   paymentMethods,
+  selectedCategoryId,
+  onSelectCategory,
   onEditTransaction,
   onOpenNewExpense,
 }: TransactionListProps) {
@@ -42,10 +46,24 @@ export function TransactionList({
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
   const paymentMethodMap = new Map(paymentMethods.map((p) => [p.id, p.name]));
 
-  const filtered =
-    filter === "ALL"
-      ? optimisticTxs
-      : optimisticTxs.filter((tx) => tx.expense_type === filter);
+  // Categories that have at least one transaction in the current month (plus currently selected category if any)
+  const presentCategoryIds = new Set(optimisticTxs.map((tx) => tx.category_id));
+  if (selectedCategoryId !== null) {
+    presentCategoryIds.add(selectedCategoryId);
+  }
+  const activeCategories = categories.filter((c) =>
+    presentCategoryIds.has(c.id)
+  );
+
+  const filtered = optimisticTxs.filter((tx) => {
+    if (filter !== "ALL" && tx.expense_type !== filter) {
+      return false;
+    }
+    if (selectedCategoryId !== null && tx.category_id !== selectedCategoryId) {
+      return false;
+    }
+    return true;
+  });
 
   function handleDelete(tx: Transaction, e: React.MouseEvent) {
     e.stopPropagation();
@@ -93,6 +111,44 @@ export function TransactionList({
           ))}
         </div>
       </div>
+
+      {activeCategories.length > 0 && (
+        <div
+          className={styles.categoryChipBar}
+          role="group"
+          aria-label="カテゴリフィルター"
+        >
+          <button
+            type="button"
+            aria-pressed={selectedCategoryId === null}
+            className={`${styles.categoryChip} ${
+              selectedCategoryId === null ? styles.categoryChipActive : ""
+            }`}
+            onClick={() => onSelectCategory(null)}
+          >
+            すべて
+          </button>
+
+          {activeCategories.map((cat) => {
+            const isSelected = selectedCategoryId === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                aria-pressed={isSelected}
+                className={`${styles.categoryChip} ${
+                  isSelected ? styles.categoryChipActive : ""
+                }`}
+                onClick={() =>
+                  onSelectCategory(isSelected ? null : cat.id)
+                }
+              >
+                {formatCategoryName(cat.name)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className={styles.emptyState}>

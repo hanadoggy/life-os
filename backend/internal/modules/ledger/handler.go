@@ -103,7 +103,21 @@ func (h *Handler) handleListTransactions(w http.ResponseWriter, r *http.Request)
 		expType = &raw
 	}
 
-	items, err := h.svc.ListTransactions(r.Context(), year, month, expType)
+	var categoryID *int32
+	if rawCat := strings.TrimSpace(r.URL.Query().Get("category_id")); rawCat != "" {
+		parsedCat, err := strconv.ParseInt(rawCat, 10, 32)
+		if err != nil || parsedCat <= 0 {
+			httpx.WriteValidationError(w, "category_id must be a positive integer", httpx.FieldError{
+				Field:   "category_id",
+				Message: "must be a positive integer",
+			})
+			return
+		}
+		cid := int32(parsedCat)
+		categoryID = &cid
+	}
+
+	items, err := h.svc.ListTransactions(r.Context(), year, month, expType, categoryID)
 	if err != nil {
 		h.writeServiceError(w, r, err)
 		return

@@ -126,7 +126,8 @@ export const api = {
   async listTransactions(
     year: number,
     month: number,
-    expenseType?: ExpenseType
+    expenseType?: ExpenseType,
+    categoryId?: number
   ): Promise<Transaction[]> {
     const params = new URLSearchParams({
       year: String(year),
@@ -134,6 +135,9 @@ export const api = {
     });
     if (expenseType) {
       params.set("expense_type", expenseType);
+    }
+    if (categoryId !== undefined && categoryId > 0) {
+      params.set("category_id", String(categoryId));
     }
     const res = await request<{ items: Transaction[] }>(
       `/api/v1/transactions?${params.toString()}`

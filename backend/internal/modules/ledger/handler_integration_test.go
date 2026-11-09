@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -218,7 +219,30 @@ func TestLedgerEndToEndIntegration(t *testing.T) {
 		t.Fatalf("POST ADVANCE transaction status = %d, body = %s", resp.StatusCode, string(body))
 	}
 
-	// 5. Verify Monthly Summary (my_share basis + daily cumulative + outstanding settlements)
+	// 4b. Create a FIXED transaction in a second category to verify category_breakdown & category_id filtering
+	rentCatID := catWrap.Items[1].ID
+	for _, cat := range catWrap.Items {
+		if cat.Name == "RENT" {
+			rentCatID = cat.ID
+			break
+		}
+	}
+	fixedPayload := map[string]any{
+		"tx_date":           "2026-11-01",
+		"kind":              "EXPENSE",
+		"expense_type":      "FIXED",
+		"category_id":       rentCatID,
+		"title":             "11월 집세",
+		"gross_amount":      85000,
+		"points_used":       0,
+		"payment_method_id": creditCardID,
+	}
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/transactions", nil, fixedPayload)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST FIXED transaction status = %d, body = %s", resp.StatusCode, string(body))
+	}
+
+	// 5. Verify Monthly Summary (my_share basis + daily cumulative + outstanding settlements + category_breakdown)
 	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/ledger/summary?year=2026&month=11", nil, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /ledger/summary status = %d, body = %s", resp.StatusCode, string(body))
@@ -229,6 +253,9 @@ func TestLedgerEndToEndIntegration(t *testing.T) {
 	if summary.VariableTotal != 2100 {
 		t.Errorf("summary.VariableTotal = %d, want 2100", summary.VariableTotal)
 	}
+	if summary.FixedTotal != 85000 {
+		t.Errorf("summary.FixedTotal = %d, want 85000", summary.FixedTotal)
+	}
 	if summary.PointsSaved != 600 {
 		t.Errorf("summary.PointsSaved = %d, want 600", summary.PointsSaved)
 	}
@@ -237,6 +264,34 @@ func TestLedgerEndToEndIntegration(t *testing.T) {
 	}
 	if len(summary.DailyVariableCumulative) != 30 {
 		t.Errorf("expected 30 days in November cumulative series, got %d", len(summary.DailyVariableCumulative))
+	}
+	if len(summary.CategoryBreakdown) != 2 {
+		t.Fatalf("expected 2 categories in breakdown, got %d", len(summary.CategoryBreakdown))
+	}
+	// Ordered by total_my_share DESC -> RENT (85000) first, GROCERIES (2100) second
+	if summary.CategoryBreakdown[0].CategoryID != rentCatID || summary.CategoryBreakdown[0].FixedAmount != 85000 || summary.CategoryBreakdown[0].FixedTxCount != 1 {
+		t.Errorf("unexpected breakdown[0]: %+v", summary.CategoryBreakdown[0])
+	}
+	if summary.CategoryBreakdown[1].CategoryID != groceriesCatID || summary.CategoryBreakdown[1].VariableAmount != 2100 || summary.CategoryBreakdown[1].VariableTxCount != 2 {
+		t.Errorf("unexpected breakdown[1]: %+v", summary.CategoryBreakdown[1])
+	}
+
+	// 5b. Verify GET /api/v1/transactions?category_id= filtering and validation
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11&category_id="+strconv.Itoa(int(groceriesCatID)), nil, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /transactions?category_id status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var filteredWrap struct {
+		Items []TransactionResponse `json:"items"`
+	}
+	_ = json.Unmarshal(body, &filteredWrap)
+	if len(filteredWrap.Items) != 2 {
+		t.Errorf("expected 2 transactions for groceries category, got %d", len(filteredWrap.Items))
+	}
+
+	resp, _ = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11&category_id=0", nil, nil)
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("GET /transactions?category_id=0 status = %d, want 422", resp.StatusCode)
 	}
 
 	// 6. Settle one settlement and verify 409 Conflict when trying to edit amounts on that transaction

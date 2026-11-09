@@ -418,8 +418,8 @@ func (s *Service) GetTransaction(ctx context.Context, id pgtype.UUID) (Transacti
 	return s.buildTransactionResponse(ctx, s.queries, entry)
 }
 
-// ListTransactions returns transactions for a given year/month and optional expense_type.
-func (s *Service) ListTransactions(ctx context.Context, year, month int, expenseType *string) ([]TransactionResponse, error) {
+// ListTransactions returns transactions for a given year/month and optional expense_type and category_id.
+func (s *Service) ListTransactions(ctx context.Context, year, month int, expenseType *string, categoryID *int32) ([]TransactionResponse, error) {
 	startDate, endDate, err := monthBounds(year, month)
 	if err != nil {
 		return nil, err
@@ -437,10 +437,22 @@ func (s *Service) ListTransactions(ctx context.Context, year, month int, expense
 		expFilter = pgtype.Text{String: et, Valid: true}
 	}
 
+	var catFilter pgtype.Int4
+	if categoryID != nil {
+		if *categoryID <= 0 {
+			return nil, newValidationError(
+				"invalid category_id filter",
+				httpx.FieldError{Field: "category_id", Message: "must be a positive integer"},
+			)
+		}
+		catFilter = pgtype.Int4{Int32: *categoryID, Valid: true}
+	}
+
 	entries, err := s.queries.ListLedgerEntriesByMonth(ctx, db.ListLedgerEntriesByMonthParams{
 		StartDate:   startDate,
 		EndDate:     endDate,
 		ExpenseType: expFilter,
+		CategoryID:  catFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list ledger entries: %w", err)
@@ -796,6 +808,29 @@ func (s *Service) GetMonthlySummary(ctx context.Context, year, month int) (Month
 		}
 	}
 
+	catRows, err := s.queries.ListCategoryBreakdownByMonth(ctx, db.ListCategoryBreakdownByMonthParams{
+		StartDate: startDate,
+		EndDate:   endDate,
+	})
+	if err != nil {
+		return MonthlySummaryResponse{}, fmt.Errorf("list category breakdown: %w", err)
+	}
+
+	breakdown := make([]CategoryBreakdownItem, len(catRows))
+	for i, r := range catRows {
+		breakdown[i] = CategoryBreakdownItem{
+			CategoryID:      r.CategoryID,
+			CategoryName:    r.CategoryName,
+			FixedAmount:     r.FixedAmount,
+			VariableAmount:  r.VariableAmount,
+			TotalMyShare:    r.TotalMyShare,
+			PointsSaved:     r.PointsSaved,
+			FixedTxCount:    r.FixedTxCount,
+			VariableTxCount: r.VariableTxCount,
+			TotalTxCount:    r.TotalTxCount,
+		}
+	}
+
 	return MonthlySummaryResponse{
 		Year:                    year,
 		Month:                   month,
@@ -806,6 +841,7 @@ func (s *Service) GetMonthlySummary(ctx context.Context, year, month int) (Month
 		ReceivableOutstanding:   outstanding.ReceivableOutstanding,
 		PayableOutstanding:      outstanding.PayableOutstanding,
 		DailyVariableCumulative: series,
+		CategoryBreakdown:       breakdown,
 	}, nil
 }
 

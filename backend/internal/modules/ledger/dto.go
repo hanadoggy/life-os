@@ -145,17 +145,31 @@ type DailyCumulativePoint struct {
 	Cumulative int32  `json:"cumulative"`
 }
 
+// CategoryBreakdownItem represents monthly expense aggregation for a single category (my_share basis).
+type CategoryBreakdownItem struct {
+	CategoryID      int32  `json:"category_id"`
+	CategoryName    string `json:"category_name"`
+	FixedAmount     int32  `json:"fixed_amount"`
+	VariableAmount  int32  `json:"variable_amount"`
+	TotalMyShare    int32  `json:"total_my_share"`
+	PointsSaved     int32  `json:"points_saved"`
+	FixedTxCount    int32  `json:"fixed_tx_count"`
+	VariableTxCount int32  `json:"variable_tx_count"`
+	TotalTxCount    int32  `json:"total_tx_count"`
+}
+
 // MonthlySummaryResponse is the response for GET /api/v1/ledger/summary.
 type MonthlySummaryResponse struct {
-	Year                    int                    `json:"year"`
-	Month                   int                    `json:"month"`
-	FixedTotal              int32                  `json:"fixed_total"`
-	VariableTotal           int32                  `json:"variable_total"`
-	IncomeTotal             int32                  `json:"income_total"`
-	PointsSaved             int32                  `json:"points_saved"`
-	ReceivableOutstanding   int32                  `json:"receivable_outstanding"`
-	PayableOutstanding      int32                  `json:"payable_outstanding"`
-	DailyVariableCumulative []DailyCumulativePoint `json:"daily_variable_cumulative"`
+	Year                    int                     `json:"year"`
+	Month                   int                     `json:"month"`
+	FixedTotal              int32                   `json:"fixed_total"`
+	VariableTotal           int32                   `json:"variable_total"`
+	IncomeTotal             int32                   `json:"income_total"`
+	PointsSaved             int32                   `json:"points_saved"`
+	ReceivableOutstanding   int32                   `json:"receivable_outstanding"`
+	PayableOutstanding      int32                   `json:"payable_outstanding"`
+	DailyVariableCumulative []DailyCumulativePoint  `json:"daily_variable_cumulative"`
+	CategoryBreakdown       []CategoryBreakdownItem `json:"category_breakdown"`
 }
 
 // CategoryResponse represents a category item.

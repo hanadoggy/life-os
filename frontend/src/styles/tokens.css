@@ -20,6 +20,16 @@
   --color-danger: #B91C1C;
   --color-danger-tint: rgba(185, 28, 28, 0.1);
 
+  /* Editorial 8-Color Category Chart Palette */
+  --chart-cat-1: #0B3B2D;
+  --chart-cat-2: #D97706;
+  --chart-cat-3: #2E6F5E;
+  --chart-cat-4: #B45309;
+  --chart-cat-5: #4A5D54;
+  --chart-cat-6: #8C6D46;
+  --chart-cat-7: #6E8B7B;
+  --chart-cat-8: #A19D93;
+
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -56,6 +66,15 @@
     --color-danger: #EF4444;
     --color-danger-tint: rgba(239, 68, 68, 0.16);
 
+    --chart-cat-1: #2E8B6E;
+    --chart-cat-2: #F59E0B;
+    --chart-cat-3: #52B793;
+    --chart-cat-4: #D97706;
+    --chart-cat-5: #7A9E8E;
+    --chart-cat-6: #C49A6C;
+    --chart-cat-7: #9BB8A8;
+    --chart-cat-8: #6E7A73;
+
     color-scheme: dark;
   }
 }
@@ -79,6 +98,15 @@
 
   --color-danger: #EF4444;
   --color-danger-tint: rgba(239, 68, 68, 0.16);
+
+  --chart-cat-1: #2E8B6E;
+  --chart-cat-2: #F59E0B;
+  --chart-cat-3: #52B793;
+  --chart-cat-4: #D97706;
+  --chart-cat-5: #7A9E8E;
+  --chart-cat-6: #C49A6C;
+  --chart-cat-7: #9BB8A8;
+  --chart-cat-8: #6E7A73;
 
   color-scheme: dark;
 }

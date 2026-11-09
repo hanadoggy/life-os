@@ -127,6 +127,18 @@ export interface DailyCumulativePoint {
   cumulative: number;
 }
 
+export interface CategoryBreakdownItem {
+  category_id: number;
+  category_name: string;
+  fixed_amount: number;
+  variable_amount: number;
+  total_my_share: number;
+  points_saved: number;
+  fixed_tx_count: number;
+  variable_tx_count: number;
+  total_tx_count: number;
+}
+
 export interface MonthlySummary {
   year: number;
   month: number;
@@ -137,6 +149,7 @@ export interface MonthlySummary {
   receivable_outstanding: number;
   payable_outstanding: number;
   daily_variable_cumulative: DailyCumulativePoint[];
+  category_breakdown: CategoryBreakdownItem[];
 }
 
 export interface SettlementItem {

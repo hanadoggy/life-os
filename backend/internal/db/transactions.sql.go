@@ -250,6 +250,73 @@ func (q *Queries) GetTransactionSyncMetaByID(ctx context.Context, id pgtype.UUID
 	return i, err
 }
 
+const listCategoryBreakdownByMonth = `-- name: ListCategoryBreakdownByMonth :many
+SELECT
+    c.id AS category_id,
+    c.name AS category_name,
+    COALESCE(SUM(CASE WHEN e.expense_type = 'FIXED' THEN e.my_share ELSE 0 END), 0)::INT AS fixed_amount,
+    COALESCE(SUM(CASE WHEN e.expense_type = 'VARIABLE' THEN e.my_share ELSE 0 END), 0)::INT AS variable_amount,
+    COALESCE(SUM(e.my_share), 0)::INT AS total_my_share,
+    COALESCE(SUM(e.points_used), 0)::INT AS points_saved,
+    COALESCE(COUNT(*) FILTER (WHERE e.expense_type = 'FIXED'), 0)::INT AS fixed_tx_count,
+    COALESCE(COUNT(*) FILTER (WHERE e.expense_type = 'VARIABLE'), 0)::INT AS variable_tx_count,
+    COUNT(*)::INT AS total_tx_count
+FROM v_ledger_entries e
+JOIN categories c ON c.id = e.category_id
+WHERE e.tx_date >= $1::date
+  AND e.tx_date < $2::date
+  AND e.kind = 'EXPENSE'
+GROUP BY c.id, c.name, c.sort_order
+ORDER BY total_my_share DESC, c.sort_order ASC, c.id ASC
+`
+
+type ListCategoryBreakdownByMonthParams struct {
+	StartDate pgtype.Date `json:"start_date"`
+	EndDate   pgtype.Date `json:"end_date"`
+}
+
+type ListCategoryBreakdownByMonthRow struct {
+	CategoryID      int32  `json:"category_id"`
+	CategoryName    string `json:"category_name"`
+	FixedAmount     int32  `json:"fixed_amount"`
+	VariableAmount  int32  `json:"variable_amount"`
+	TotalMyShare    int32  `json:"total_my_share"`
+	PointsSaved     int32  `json:"points_saved"`
+	FixedTxCount    int32  `json:"fixed_tx_count"`
+	VariableTxCount int32  `json:"variable_tx_count"`
+	TotalTxCount    int32  `json:"total_tx_count"`
+}
+
+func (q *Queries) ListCategoryBreakdownByMonth(ctx context.Context, arg ListCategoryBreakdownByMonthParams) ([]ListCategoryBreakdownByMonthRow, error) {
+	rows, err := q.db.Query(ctx, listCategoryBreakdownByMonth, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCategoryBreakdownByMonthRow{}
+	for rows.Next() {
+		var i ListCategoryBreakdownByMonthRow
+		if err := rows.Scan(
+			&i.CategoryID,
+			&i.CategoryName,
+			&i.FixedAmount,
+			&i.VariableAmount,
+			&i.TotalMyShare,
+			&i.PointsSaved,
+			&i.FixedTxCount,
+			&i.VariableTxCount,
+			&i.TotalTxCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDailyVariableCumulative = `-- name: ListDailyVariableCumulative :many
 WITH days AS (
     SELECT gs::date AS day
@@ -338,6 +405,7 @@ FROM v_ledger_entries
 WHERE tx_date >= $1::date
   AND tx_date < $2::date
   AND ($3::text IS NULL OR expense_type = $3::text)
+  AND ($4::int IS NULL OR category_id = $4::int)
 ORDER BY tx_date DESC, created_at DESC, id DESC
 `
 
@@ -345,10 +413,16 @@ type ListLedgerEntriesByMonthParams struct {
 	StartDate   pgtype.Date `json:"start_date"`
 	EndDate     pgtype.Date `json:"end_date"`
 	ExpenseType pgtype.Text `json:"expense_type"`
+	CategoryID  pgtype.Int4 `json:"category_id"`
 }
 
 func (q *Queries) ListLedgerEntriesByMonth(ctx context.Context, arg ListLedgerEntriesByMonthParams) ([]VLedgerEntry, error) {
-	rows, err := q.db.Query(ctx, listLedgerEntriesByMonth, arg.StartDate, arg.EndDate, arg.ExpenseType)
+	rows, err := q.db.Query(ctx, listLedgerEntriesByMonth,
+		arg.StartDate,
+		arg.EndDate,
+		arg.ExpenseType,
+		arg.CategoryID,
+	)
 	if err != nil {
 		return nil, err
 	}

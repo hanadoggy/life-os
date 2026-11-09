@@ -109,6 +109,7 @@ FROM v_ledger_entries
 WHERE tx_date >= sqlc.arg(start_date)::date
   AND tx_date < sqlc.arg(end_date)::date
   AND (sqlc.narg(expense_type)::text IS NULL OR expense_type = sqlc.narg(expense_type)::text)
+  AND (sqlc.narg(category_id)::int IS NULL OR category_id = sqlc.narg(category_id)::int)
 ORDER BY tx_date DESC, created_at DESC, id DESC;
 
 -- name: UpdateTransaction :execrows
@@ -170,4 +171,24 @@ SELECT
 FROM days d
 LEFT JOIN daily_totals dt ON dt.tx_date = d.day
 ORDER BY d.day ASC;
+
+-- name: ListCategoryBreakdownByMonth :many
+SELECT
+    c.id AS category_id,
+    c.name AS category_name,
+    COALESCE(SUM(CASE WHEN e.expense_type = 'FIXED' THEN e.my_share ELSE 0 END), 0)::INT AS fixed_amount,
+    COALESCE(SUM(CASE WHEN e.expense_type = 'VARIABLE' THEN e.my_share ELSE 0 END), 0)::INT AS variable_amount,
+    COALESCE(SUM(e.my_share), 0)::INT AS total_my_share,
+    COALESCE(SUM(e.points_used), 0)::INT AS points_saved,
+    COALESCE(COUNT(*) FILTER (WHERE e.expense_type = 'FIXED'), 0)::INT AS fixed_tx_count,
+    COALESCE(COUNT(*) FILTER (WHERE e.expense_type = 'VARIABLE'), 0)::INT AS variable_tx_count,
+    COUNT(*)::INT AS total_tx_count
+FROM v_ledger_entries e
+JOIN categories c ON c.id = e.category_id
+WHERE e.tx_date >= sqlc.arg(start_date)::date
+  AND e.tx_date < sqlc.arg(end_date)::date
+  AND e.kind = 'EXPENSE'
+GROUP BY c.id, c.name, c.sort_order
+ORDER BY total_my_share DESC, c.sort_order ASC, c.id ASC;
+
 
