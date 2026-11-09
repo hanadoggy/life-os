@@ -29,6 +29,9 @@ const (
 
 	OutboxOpUpsert = "UPSERT"
 	OutboxOpDelete = "DELETE"
+
+	// MaxYenAmount caps single transaction/settlement amounts at 100,000,000 JPY to prevent overflow.
+	MaxYenAmount int32 = 100_000_000
 )
 
 var (

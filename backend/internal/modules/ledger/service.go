@@ -113,16 +113,16 @@ func ValidateTransactionAccounting(
 		})
 	}
 
-	if grossAmount < 0 {
+	if grossAmount < 0 || grossAmount > MaxYenAmount {
 		fields = append(fields, httpx.FieldError{
 			Field:   "gross_amount",
-			Message: "must be >= 0",
+			Message: fmt.Sprintf("must be between 0 and %d", MaxYenAmount),
 		})
 	}
-	if pointsUsed < 0 {
+	if pointsUsed < 0 || pointsUsed > MaxYenAmount {
 		fields = append(fields, httpx.FieldError{
 			Field:   "points_used",
-			Message: "must be >= 0",
+			Message: fmt.Sprintf("must be between 0 and %d", MaxYenAmount),
 		})
 	}
 	if grossAmount >= 0 && pointsUsed > grossAmount {
@@ -134,7 +134,7 @@ func ValidateTransactionAccounting(
 
 	if len(metadata) > 0 {
 		var js map[string]any
-		if err := json.Unmarshal(metadata, &js); err != nil {
+		if err := json.Unmarshal(metadata, &js); err != nil || js == nil {
 			fields = append(fields, httpx.FieldError{
 				Field:   "metadata",
 				Message: "must be a valid JSON object",
@@ -142,9 +142,16 @@ func ValidateTransactionAccounting(
 		}
 	}
 
-	netAmount := grossAmount - pointsUsed
-	var receivableTotal int32
-	var payableTotal int32
+	if kind == KindIncome && len(settlements) > 0 {
+		fields = append(fields, httpx.FieldError{
+			Field:   "settlements",
+			Message: "settlements are not allowed when kind is INCOME",
+		})
+	}
+
+	netAmount := int64(grossAmount) - int64(pointsUsed)
+	var receivableTotal int64
+	var payableTotal int64
 	var payableCount int
 
 	for i, st := range settlements {
@@ -155,17 +162,17 @@ func ValidateTransactionAccounting(
 				Message: "must be between 1 and 50 characters",
 			})
 		}
-		if st.Amount <= 0 {
+		if st.Amount <= 0 || st.Amount > MaxYenAmount {
 			fields = append(fields, httpx.FieldError{
 				Field:   fmt.Sprintf("settlements[%d].amount", i),
-				Message: "must be > 0",
+				Message: fmt.Sprintf("must be between 1 and %d", MaxYenAmount),
 			})
 		}
 		switch st.Direction {
 		case DirectionReceivable:
-			receivableTotal += st.Amount
+			receivableTotal += int64(st.Amount)
 		case DirectionPayable:
-			payableTotal += st.Amount
+			payableTotal += int64(st.Amount)
 			payableCount++
 		default:
 			fields = append(fields, httpx.FieldError{
@@ -304,8 +311,8 @@ func (s *Service) CreateTransaction(
 	}
 
 	var memo pgtype.Text
-	if req.Memo != nil {
-		memo = pgtype.Text{String: *req.Memo, Valid: true}
+	if req.Memo != nil && strings.TrimSpace(*req.Memo) != "" {
+		memo = pgtype.Text{String: strings.TrimSpace(*req.Memo), Valid: true}
 	}
 
 	var idemKey pgtype.UUID
@@ -344,6 +351,11 @@ func (s *Service) CreateTransaction(
 			if getErr == nil {
 				resp, buildErr := s.buildTransactionResponse(ctx, s.queries, existing)
 				return resp, false, buildErr
+			}
+			if errors.Is(getErr, pgx.ErrNoRows) {
+				return TransactionResponse{}, false, &ConflictError{
+					Detail: "transaction with this Idempotency-Key was already deleted",
+				}
 			}
 		}
 		return TransactionResponse{}, false, fmt.Errorf("insert transaction: %w", err)
@@ -473,6 +485,11 @@ func (s *Service) UpdateTransaction(ctx context.Context, id pgtype.UUID, req Upd
 
 	qtx := s.queries.WithTx(tx)
 
+	// Lock parent transaction row during update to prevent concurrent settlement toggle race (TOCTOU)
+	if _, err := tx.Exec(ctx, "SELECT 1 FROM transactions WHERE id = $1 AND deleted_at IS NULL FOR UPDATE", id); err != nil {
+		return TransactionResponse{}, fmt.Errorf("lock transaction: %w", err)
+	}
+
 	current, err := qtx.GetLedgerEntryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -584,7 +601,12 @@ func (s *Service) UpdateTransaction(ctx context.Context, id pgtype.UUID, req Upd
 
 	memo := current.Memo
 	if req.Memo != nil {
-		memo = pgtype.Text{String: *req.Memo, Valid: true}
+		trimmedMemo := strings.TrimSpace(*req.Memo)
+		if trimmedMemo == "" {
+			memo = pgtype.Text{}
+		} else {
+			memo = pgtype.Text{String: trimmedMemo, Valid: true}
+		}
 	}
 
 	metadata := current.Metadata
