@@ -455,4 +455,144 @@ func TestRecurringRulesAndSchedulerIdempotencyIntegration(t *testing.T) {
 	}
 }
 
+func TestFurusatoProfileDonationsAndExpenseSyncIntegration(t *testing.T) {
+	ts, pool := setupTestServer(t)
+	client := ts.Client()
+	ctx := context.Background()
+
+	// 1. Initial GET /api/v1/living/furusato?year=2026 returns default profile and formula metadata
+	resp, body := doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/living/furusato?year=2026", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /living/furusato status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var overview FurusatoOverviewResponse
+	if err := json.Unmarshal(body, &overview); err != nil {
+		t.Fatalf("unmarshal furusato overview: %v", err)
+	}
+	if overview.TaxYear != 2026 || overview.EstimatedLimit != 0 || overview.FormulaUpdatedAt != "2026-04" {
+		t.Fatalf("unexpected initial furusato overview: %+v", overview)
+	}
+	if overview.FormulaLabel != FurusatoFormulaLabel {
+		t.Fatalf("expected FormulaLabel = %q, got %q", FurusatoFormulaLabel, overview.FormulaLabel)
+	}
+
+	// 2. PUT /api/v1/living/furusato/profile/2026 with gross_income = 6,000,000 JPY (auto 15% social insurance)
+	resp, body = doJSONRequest(t, client, http.MethodPut, ts.URL+"/api/v1/living/furusato/profile/2026", map[string]any{
+		"gross_income":     6000000,
+		"social_insurance": 0,
+		"ideco_annual":     0,
+		"family_status":    "SINGLE",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT /living/furusato/profile/2026 status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	_ = json.Unmarshal(body, &overview)
+	if overview.EstimatedLimit != 77900 || overview.RemainingLimit != 77900 {
+		t.Fatalf("expected EstimatedLimit = 77900, got %+v", overview)
+	}
+
+	// 3. POST /api/v1/living/furusato/donations with create_expense = true
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/furusato/donations", map[string]any{
+		"tax_year":        2026,
+		"donated_at":      "2026-11-10",
+		"municipality":    "北海道白糠町",
+		"return_gift":     "いくら醤油漬け 500g",
+		"amount":          15000,
+		"onestop_method":  "ONLINE_IAM",
+		"create_expense":  true,
+		"memo":            "楽天ふるさと納税",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST /living/furusato/donations status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var donation1 FurusatoDonationResponse
+	_ = json.Unmarshal(body, &donation1)
+	if donation1.TransactionID == nil || *donation1.TransactionID == "" {
+		t.Fatalf("expected linked transaction_id when create_expense=true, got %+v", donation1)
+	}
+	if donation1.ApplicationDeadline != "2027-01-10" || donation1.OnestopCompleted {
+		t.Fatalf("expected default deadline 2027-01-10 and onestop_completed=false, got %+v", donation1)
+	}
+
+	// Verify linked PUBLIC_FEES transaction in Ledger and sheet_sync_outbox entry
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /transactions status = %d", resp.StatusCode)
+	}
+	var txList struct {
+		Items []ledger.TransactionResponse `json:"items"`
+	}
+	_ = json.Unmarshal(body, &txList)
+	if len(txList.Items) != 1 || txList.Items[0].GrossAmount != 15000 {
+		t.Fatalf("expected 1 linked PUBLIC_FEES transaction of 15000 JPY, got %+v", txList.Items)
+	}
+
+	var outboxCount int
+	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM sheet_sync_outbox WHERE op = 'UPSERT'").Scan(&outboxCount); err != nil {
+		t.Fatalf("count sheet_sync_outbox: %v", err)
+	}
+	if outboxCount != 1 {
+		t.Fatalf("expected 1 sheet_sync_outbox UPSERT row for furusato expense, got %d", outboxCount)
+	}
+
+	// 4. POST second donation without create_expense (POSTAL method)
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/furusato/donations", map[string]any{
+		"tax_year":       2026,
+		"donated_at":     "2026-11-12",
+		"municipality":   "宮崎県都城市",
+		"return_gift":    "宮崎牛切り落とし",
+		"amount":         12000,
+		"onestop_method": "POSTAL",
+		"create_expense": false,
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("POST second donation status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var donation2 FurusatoDonationResponse
+	_ = json.Unmarshal(body, &donation2)
+	if donation2.TransactionID != nil {
+		t.Fatalf("expected nil transaction_id when create_expense=false, got %+v", donation2)
+	}
+
+	// 5. Verify overview totals: donated_total = 27,000, remaining_limit = 50,900, uncompleted_onestop_count = 2
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/living/furusato?year=2026", nil)
+	_ = json.Unmarshal(body, &overview)
+	if overview.DonatedTotal != 27000 || overview.RemainingLimit != 50900 || overview.UncompletedOnestopCount != 2 {
+		t.Fatalf("unexpected overview totals after 2 donations: %+v", overview)
+	}
+
+	// 6. Toggle onestop_completed = true on donation1 via PATCH
+	resp, body = doJSONRequest(t, client, http.MethodPatch, ts.URL+"/api/v1/living/furusato/donations/"+donation1.ID, map[string]any{
+		"onestop_completed": true,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PATCH furusato donation status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	var patched1 FurusatoDonationResponse
+	_ = json.Unmarshal(body, &patched1)
+	if !patched1.OnestopCompleted || patched1.CompletedAt == nil {
+		t.Fatalf("expected OnestopCompleted=true and non-nil CompletedAt, got %+v", patched1)
+	}
+
+	// Verify uncompleted_onestop_count is now 1
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/living/furusato?year=2026", nil)
+	_ = json.Unmarshal(body, &overview)
+	if overview.UncompletedOnestopCount != 1 {
+		t.Fatalf("expected UncompletedOnestopCount = 1, got %d", overview.UncompletedOnestopCount)
+	}
+
+	// 7. Delete donation2
+	resp, _ = doJSONRequest(t, client, http.MethodDelete, ts.URL+"/api/v1/living/furusato/donations/"+donation2.ID, nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("DELETE furusato donation status = %d, want 204", resp.StatusCode)
+	}
+
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/living/furusato?year=2026", nil)
+	_ = json.Unmarshal(body, &overview)
+	if len(overview.Items) != 1 || overview.DonatedTotal != 15000 || overview.UncompletedOnestopCount != 0 {
+		t.Fatalf("unexpected overview after delete: %+v", overview)
+	}
+}
+
+
 

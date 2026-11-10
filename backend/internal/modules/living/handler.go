@@ -44,7 +44,15 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/living/recurring-rules/{id}", h.handleUpdateRecurringRule)
 	mux.HandleFunc("DELETE /api/v1/living/recurring-rules/{id}", h.handleDeleteRecurringRule)
 	mux.HandleFunc("POST /api/v1/living/recurring-rules/sync", h.handleSyncRecurringRules)
+
+	// Furusato Nozei (Simplified Estimator & One-stop Tracker)
+	mux.HandleFunc("GET /api/v1/living/furusato", h.handleGetFurusatoOverview)
+	mux.HandleFunc("PUT /api/v1/living/furusato/profile/{year}", h.handleUpsertFurusatoProfile)
+	mux.HandleFunc("POST /api/v1/living/furusato/donations", h.handleCreateFurusatoDonation)
+	mux.HandleFunc("PATCH /api/v1/living/furusato/donations/{id}", h.handleUpdateFurusatoDonation)
+	mux.HandleFunc("DELETE /api/v1/living/furusato/donations/{id}", h.handleDeleteFurusatoDonation)
 }
+
 
 func (h *Handler) handleGetBudgetOverview(w http.ResponseWriter, r *http.Request) {
 	year, month, err := h.parseYearMonthQuery(r, true)
@@ -198,6 +206,115 @@ func (h *Handler) handleSyncRecurringRules(w http.ResponseWriter, r *http.Reques
 
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
+
+func (h *Handler) handleGetFurusatoOverview(w http.ResponseWriter, r *http.Request) {
+	year := time.Now().In(h.loc).Year()
+	if rawY := strings.TrimSpace(r.URL.Query().Get("year")); rawY != "" {
+		parsed, err := strconv.Atoi(rawY)
+		if err != nil {
+			h.writeServiceError(w, r, newValidationError("year must be an integer", httpx.FieldError{
+				Field:   "year",
+				Message: "must be an integer",
+			}))
+			return
+		}
+		year = parsed
+	}
+
+	resp, err := h.svc.GetFurusatoOverview(r.Context(), year)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleUpsertFurusatoProfile(w http.ResponseWriter, r *http.Request) {
+	rawYear := strings.TrimSpace(r.PathValue("year"))
+	year, err := strconv.Atoi(rawYear)
+	if err != nil {
+		h.writeServiceError(w, r, newValidationError("year must be an integer", httpx.FieldError{
+			Field:   "year",
+			Message: "must be an integer",
+		}))
+		return
+	}
+
+	var req UpsertFurusatoProfileRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+		return
+	}
+
+	resp, err := h.svc.UpsertFurusatoProfile(r.Context(), year, req)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleCreateFurusatoDonation(w http.ResponseWriter, r *http.Request) {
+	var req CreateFurusatoDonationRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+		return
+	}
+
+	resp, err := h.svc.CreateFurusatoDonation(r.Context(), req)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusCreated, resp)
+}
+
+func (h *Handler) handleUpdateFurusatoDonation(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteValidationError(w, "invalid furusato donation id", httpx.FieldError{
+			Field:   "id",
+			Message: "must be a valid UUID",
+		})
+		return
+	}
+
+	var req UpdateFurusatoDonationRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "https://hanayor.com/problems/bad-request", "Bad Request", err.Error())
+		return
+	}
+
+	resp, err := h.svc.UpdateFurusatoDonation(r.Context(), id, req)
+	if err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) handleDeleteFurusatoDonation(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteValidationError(w, "invalid furusato donation id", httpx.FieldError{
+			Field:   "id",
+			Message: "must be a valid UUID",
+		})
+		return
+	}
+
+	if err := h.svc.DeleteFurusatoDonation(r.Context(), id); err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 
 func (h *Handler) parseYearMonthQuery(r *http.Request, defaultToCurrent bool) (int, int, error) {
 	rawY := strings.TrimSpace(r.URL.Query().Get("year"))

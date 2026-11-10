@@ -328,3 +328,237 @@ func parseUUID(raw string) (pgtype.UUID, error) {
 	}
 	return u, nil
 }
+
+// FurusatoProfileResponse represents the user's annual tax/income profile for Furusato Nozei estimation.
+type FurusatoProfileResponse struct {
+	TaxYear         int        `json:"tax_year"`
+	GrossIncome     int32      `json:"gross_income"`
+	SocialInsurance int32      `json:"social_insurance"`
+	IdecoAnnual     int32      `json:"ideco_annual"`
+	FamilyStatus    string     `json:"family_status"`
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+}
+
+// FurusatoDonationResponse represents a single Furusato Nozei donation and One-stop Special Exception tracking row.
+type FurusatoDonationResponse struct {
+	ID                  string     `json:"id"`
+	TaxYear             int        `json:"tax_year"`
+	DonatedAt           string     `json:"donated_at"`
+	Municipality        string     `json:"municipality"`
+	ReturnGift          string     `json:"return_gift"`
+	Amount              int32      `json:"amount"`
+	OnestopMethod       string     `json:"onestop_method"`
+	OnestopCompleted    bool       `json:"onestop_completed"`
+	CompletedAt         *time.Time `json:"completed_at,omitempty"`
+	ApplicationDeadline string     `json:"application_deadline"`
+	TransactionID       *string    `json:"transaction_id,omitempty"`
+	Memo                *string    `json:"memo,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+}
+
+// FurusatoOverviewResponse is the response for GET /api/v1/living/furusato?year=YYYY.
+type FurusatoOverviewResponse struct {
+	TaxYear                 int                        `json:"tax_year"`
+	FormulaLabel            string                     `json:"formula_label"`
+	FormulaUpdatedAt        string                     `json:"formula_updated_at"`
+	FormulaCaption          string                     `json:"formula_caption"`
+	Profile                 FurusatoProfileResponse    `json:"profile"`
+	EstimatedLimit          int32                      `json:"estimated_limit"`
+	CalculationBreakdown    FurusatoLimitBreakdown     `json:"calculation_breakdown"`
+	DonatedTotal            int32                      `json:"donated_total"`
+	RemainingLimit          int32                      `json:"remaining_limit"`
+	UncompletedOnestopCount int                        `json:"uncompleted_onestop_count"`
+	Items                   []FurusatoDonationResponse `json:"items"`
+}
+
+// UpsertFurusatoProfileRequest is the request payload for PUT /api/v1/living/furusato/profile/{year}.
+type UpsertFurusatoProfileRequest struct {
+	GrossIncome     *int32  `json:"gross_income"`
+	SocialInsurance *int32  `json:"social_insurance"`
+	IdecoAnnual     *int32  `json:"ideco_annual"`
+	FamilyStatus    *string `json:"family_status"`
+}
+
+// Validate checks UpsertFurusatoProfileRequest constraints.
+func (r *UpsertFurusatoProfileRequest) Validate(taxYear int) error {
+	var fields []httpx.FieldError
+
+	if taxYear < 2020 || taxYear > 2100 {
+		fields = append(fields, httpx.FieldError{
+			Field:   "year",
+			Message: "must be between 2020 and 2100",
+		})
+	}
+
+	if r.GrossIncome == nil {
+		fields = append(fields, httpx.FieldError{
+			Field:   "gross_income",
+			Message: "is required",
+		})
+	} else if *r.GrossIncome < 0 || *r.GrossIncome > MaxYenAmount {
+		fields = append(fields, httpx.FieldError{
+			Field:   "gross_income",
+			Message: fmt.Sprintf("must be between 0 and %d", MaxYenAmount),
+		})
+	}
+
+	if r.SocialInsurance != nil && (*r.SocialInsurance < 0 || *r.SocialInsurance > MaxYenAmount) {
+		fields = append(fields, httpx.FieldError{
+			Field:   "social_insurance",
+			Message: fmt.Sprintf("must be between 0 and %d", MaxYenAmount),
+		})
+	}
+
+	if r.IdecoAnnual != nil && (*r.IdecoAnnual < 0 || *r.IdecoAnnual > MaxYenAmount) {
+		fields = append(fields, httpx.FieldError{
+			Field:   "ideco_annual",
+			Message: fmt.Sprintf("must be between 0 and %d", MaxYenAmount),
+		})
+	}
+
+	if r.FamilyStatus != nil {
+		trimmed := strings.TrimSpace(*r.FamilyStatus)
+		r.FamilyStatus = &trimmed
+		if !isValidFamilyStatus(trimmed) {
+			fields = append(fields, httpx.FieldError{
+				Field:   "family_status",
+				Message: "must be SINGLE, MARRIED_NO_DEP, or MARRIED_DEP_1",
+			})
+		}
+	}
+
+	if len(fields) > 0 {
+		return newValidationError(fields[0].Message, fields...)
+	}
+	return nil
+}
+
+// CreateFurusatoDonationRequest is the request payload for POST /api/v1/living/furusato/donations.
+type CreateFurusatoDonationRequest struct {
+	TaxYear             *int    `json:"tax_year"`
+	DonatedAt           string  `json:"donated_at"`
+	Municipality        string  `json:"municipality"`
+	ReturnGift          string  `json:"return_gift"`
+	Amount              int32   `json:"amount"`
+	OnestopMethod       string  `json:"onestop_method"`
+	OnestopCompleted    *bool   `json:"onestop_completed"`
+	ApplicationDeadline *string `json:"application_deadline"`
+	Memo                *string `json:"memo"`
+	CreateExpense       bool    `json:"create_expense"`
+	PaymentMethodID     *int32  `json:"payment_method_id"`
+}
+
+// UpdateFurusatoDonationRequest is the request payload for PATCH /api/v1/living/furusato/donations/{id}.
+type UpdateFurusatoDonationRequest struct {
+	TaxYear             *int    `json:"tax_year"`
+	DonatedAt           *string `json:"donated_at"`
+	Municipality        *string `json:"municipality"`
+	ReturnGift          *string `json:"return_gift"`
+	Amount              *int32  `json:"amount"`
+	OnestopMethod       *string `json:"onestop_method"`
+	OnestopCompleted    *bool   `json:"onestop_completed"`
+	ApplicationDeadline *string `json:"application_deadline"`
+	Memo                *string `json:"memo"`
+}
+
+func isValidFamilyStatus(v string) bool {
+	switch v {
+	case FamilyStatusSingle, FamilyStatusMarriedNoDep, FamilyStatusMarriedDep1:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidOnestopMethod(v string) bool {
+	switch v {
+	case OnestopMethodOnlineIAM, OnestopMethodPostal, OnestopMethodTaxReturn:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidateFurusatoDonationFields validates domain constraints for a Furusato Nozei donation.
+func ValidateFurusatoDonationFields(
+	taxYear int,
+	donatedAt string,
+	municipality string,
+	returnGift string,
+	amount int32,
+	onestopMethod string,
+	applicationDeadline string,
+	memo *string,
+) (time.Time, time.Time, error) {
+	var fields []httpx.FieldError
+
+	if taxYear < 2020 || taxYear > 2100 {
+		fields = append(fields, httpx.FieldError{
+			Field:   "tax_year",
+			Message: "must be between 2020 and 2100",
+		})
+	}
+
+	parsedDonatedAt, err := time.Parse("2006-01-02", strings.TrimSpace(donatedAt))
+	if err != nil {
+		fields = append(fields, httpx.FieldError{
+			Field:   "donated_at",
+			Message: "must be in YYYY-MM-DD format",
+		})
+	}
+
+	trimmedMunicipality := strings.TrimSpace(municipality)
+	if l := utf8.RuneCountInString(trimmedMunicipality); l < 1 || l > 100 {
+		fields = append(fields, httpx.FieldError{
+			Field:   "municipality",
+			Message: "must be between 1 and 100 characters",
+		})
+	}
+
+	trimmedGift := strings.TrimSpace(returnGift)
+	if utf8.RuneCountInString(trimmedGift) > 200 {
+		fields = append(fields, httpx.FieldError{
+			Field:   "return_gift",
+			Message: "must be at most 200 characters",
+		})
+	}
+
+	if amount <= 0 || amount > MaxYenAmount {
+		fields = append(fields, httpx.FieldError{
+			Field:   "amount",
+			Message: fmt.Sprintf("must be between 1 and %d", MaxYenAmount),
+		})
+	}
+
+	if !isValidOnestopMethod(onestopMethod) {
+		fields = append(fields, httpx.FieldError{
+			Field:   "onestop_method",
+			Message: "must be ONLINE_IAM, POSTAL, or TAX_RETURN",
+		})
+	}
+
+	parsedDeadline, err := time.Parse("2006-01-02", strings.TrimSpace(applicationDeadline))
+	if err != nil {
+		fields = append(fields, httpx.FieldError{
+			Field:   "application_deadline",
+			Message: "must be in YYYY-MM-DD format",
+		})
+	}
+
+	if memo != nil {
+		trimmedMemo := strings.TrimSpace(*memo)
+		if utf8.RuneCountInString(trimmedMemo) > 200 {
+			fields = append(fields, httpx.FieldError{
+				Field:   "memo",
+				Message: "must be at most 200 characters",
+			})
+		}
+	}
+
+	if len(fields) > 0 {
+		return time.Time{}, time.Time{}, newValidationError(fields[0].Message, fields...)
+	}
+	return parsedDonatedAt, parsedDeadline, nil
+}
+

@@ -3,11 +3,14 @@ import type {
   BudgetItem,
   BudgetOverview,
   Category,
+  CreateFurusatoDonationInput,
   CreatePresetInput,
   CreateRecurringRuleInput,
   CreateTransactionInput,
   ExpensePreset,
   ExpenseType,
+  FurusatoDonation,
+  FurusatoOverview,
   MonthlySummary,
   PaymentMethod,
   ProblemDetails,
@@ -17,9 +20,11 @@ import type {
   SettlementsOverview,
   SyncRecurringRulesResult,
   Transaction,
+  UpdateFurusatoDonationInput,
   UpdateRecurringRuleInput,
   UpdateTransactionInput,
   UpsertBudgetInput,
+  UpsertFurusatoProfileInput,
 } from "./types";
 import { navigate } from "../router/useRoute";
 
@@ -287,5 +292,56 @@ export const api = {
       }
     );
   },
+
+  // Living: Furusato Nozei (Simplified Estimator & One-stop Tracker)
+  getFurusatoOverview(year: number): Promise<FurusatoOverview> {
+    const params = new URLSearchParams({
+      year: String(year),
+    });
+    return request<FurusatoOverview>(
+      `/api/v1/living/furusato?${params.toString()}`
+    );
+  },
+  upsertFurusatoProfile(
+    year: number,
+    input: UpsertFurusatoProfileInput
+  ): Promise<FurusatoOverview> {
+    return request<FurusatoOverview>(
+      `/api/v1/living/furusato/profile/${encodeURIComponent(String(year))}`,
+      {
+        method: "PUT",
+        body: input,
+      }
+    );
+  },
+  createFurusatoDonation(
+    input: CreateFurusatoDonationInput
+  ): Promise<FurusatoDonation> {
+    return request<FurusatoDonation>("/api/v1/living/furusato/donations", {
+      method: "POST",
+      body: input,
+    });
+  },
+  updateFurusatoDonation(
+    id: string,
+    input: UpdateFurusatoDonationInput
+  ): Promise<FurusatoDonation> {
+    return request<FurusatoDonation>(
+      `/api/v1/living/furusato/donations/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: input,
+      }
+    );
+  },
+  deleteFurusatoDonation(id: string): Promise<void> {
+    return request<void>(
+      `/api/v1/living/furusato/donations/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
 };
+
 

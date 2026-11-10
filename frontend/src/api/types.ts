@@ -250,6 +250,98 @@ export interface SyncRecurringRulesResult {
   transaction_ids: string[];
 }
 
+export type FurusatoFamilyStatus =
+  | "SINGLE"
+  | "MARRIED_NO_DEP"
+  | "MARRIED_DEP_1";
+
+export type FurusatoOnestopMethod = "ONLINE_IAM" | "POSTAL" | "TAX_RETURN";
+
+export interface FurusatoProfile {
+  tax_year: number;
+  gross_income: number;
+  social_insurance: number;
+  ideco_annual: number;
+  family_status: FurusatoFamilyStatus;
+  updated_at?: string;
+}
+
+export interface FurusatoLimitBreakdown {
+  gross_income: number;
+  effective_social_insurance: number;
+  social_insurance_estimated: boolean;
+  employment_income_deduction: number;
+  taxable_income: number;
+  resident_tax_income_portion: number;
+  marginal_tax_rate: number;
+  estimated_limit: number;
+}
+
+export interface FurusatoDonation {
+  id: string;
+  tax_year: number;
+  donated_at: string;
+  municipality: string;
+  return_gift: string;
+  amount: number;
+  onestop_method: FurusatoOnestopMethod;
+  onestop_completed: boolean;
+  completed_at?: string | null;
+  application_deadline: string;
+  transaction_id?: string | null;
+  memo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FurusatoOverview {
+  tax_year: number;
+  formula_label: string;
+  formula_updated_at: string;
+  formula_caption: string;
+  profile: FurusatoProfile;
+  estimated_limit: number;
+  calculation_breakdown: FurusatoLimitBreakdown;
+  donated_total: number;
+  remaining_limit: number;
+  uncompleted_onestop_count: number;
+  items: FurusatoDonation[];
+}
+
+export interface UpsertFurusatoProfileInput {
+  gross_income: number;
+  social_insurance?: number;
+  ideco_annual?: number;
+  family_status?: FurusatoFamilyStatus;
+}
+
+export interface CreateFurusatoDonationInput {
+  tax_year?: number;
+  donated_at: string;
+  municipality: string;
+  return_gift?: string;
+  amount: number;
+  onestop_method: FurusatoOnestopMethod;
+  onestop_completed?: boolean;
+  application_deadline?: string;
+  memo?: string;
+  create_expense?: boolean;
+  payment_method_id?: number;
+}
+
+export interface UpdateFurusatoDonationInput {
+  tax_year?: number;
+  donated_at?: string;
+  municipality?: string;
+  return_gift?: string;
+  amount?: number;
+  onestop_method?: FurusatoOnestopMethod;
+  onestop_completed?: boolean;
+  application_deadline?: string;
+  memo?: string;
+}
+
+
 export interface SettlementItem {
   id: string;
   transaction_id: string;
@@ -310,6 +402,18 @@ const EXPENSE_TYPE_JA_MAP: Record<ExpenseType, string> = {
   FIXED: "固定費",
 };
 
+const FURUSATO_FAMILY_STATUS_JA_MAP: Record<FurusatoFamilyStatus, string> = {
+  SINGLE: "独身・共働き（扶養なし）",
+  MARRIED_NO_DEP: "夫婦（配偶者控除あり・扶養なし）",
+  MARRIED_DEP_1: "夫婦＋扶養1人（16〜18歳等）",
+};
+
+const FURUSATO_ONESTOP_METHOD_JA_MAP: Record<FurusatoOnestopMethod, string> = {
+  ONLINE_IAM: "オンライン (IAM / マイナポータル)",
+  POSTAL: "郵送 (申請書＋本人確認書類)",
+  TAX_RETURN: "確定申告",
+};
+
 export function formatCategoryName(code: string): string {
   return CATEGORY_JA_MAP[code] ?? code;
 }
@@ -322,6 +426,15 @@ export function formatExpenseType(type: ExpenseType | null | undefined): string 
   if (!type) return "収入";
   return EXPENSE_TYPE_JA_MAP[type] ?? type;
 }
+
+export function formatFurusatoFamilyStatus(status: FurusatoFamilyStatus): string {
+  return FURUSATO_FAMILY_STATUS_JA_MAP[status] ?? status;
+}
+
+export function formatFurusatoOnestopMethod(method: FurusatoOnestopMethod): string {
+  return FURUSATO_ONESTOP_METHOD_JA_MAP[method] ?? method;
+}
+
 
 const jpyFormatter = new Intl.NumberFormat("ja-JP");
 

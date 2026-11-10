@@ -206,4 +206,144 @@ INSERT INTO recurring_executions (
 )
 ON CONFLICT (rule_id, target_period) DO NOTHING;
 
+-- name: GetFurusatoProfileByYear :one
+SELECT
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status,
+    updated_at
+FROM furusato_profiles
+WHERE tax_year = $1;
+
+-- name: UpsertFurusatoProfile :one
+INSERT INTO furusato_profiles (
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+ON CONFLICT (tax_year) DO UPDATE SET
+    gross_income = EXCLUDED.gross_income,
+    social_insurance = EXCLUDED.social_insurance,
+    ideco_annual = EXCLUDED.ideco_annual,
+    family_status = EXCLUDED.family_status
+RETURNING
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status,
+    updated_at;
+
+-- name: ListFurusatoDonationsByYear :many
+SELECT
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+FROM furusato_donations
+WHERE tax_year = $1
+ORDER BY donated_at DESC, created_at DESC, id DESC;
+
+-- name: GetFurusatoDonationByID :one
+SELECT
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+FROM furusato_donations
+WHERE id = $1;
+
+-- name: CreateFurusatoDonation :one
+INSERT INTO furusato_donations (
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+RETURNING
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at;
+
+-- name: UpdateFurusatoDonation :one
+UPDATE furusato_donations
+SET
+    tax_year = $2,
+    donated_at = $3,
+    municipality = $4,
+    return_gift = $5,
+    amount = $6,
+    onestop_method = $7,
+    onestop_completed = $8,
+    completed_at = $9,
+    application_deadline = $10,
+    memo = $11
+WHERE id = $1
+RETURNING
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at;
+
+-- name: DeleteFurusatoDonation :execrows
+DELETE FROM furusato_donations
+WHERE id = $1;
+
+
 

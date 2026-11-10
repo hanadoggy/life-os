@@ -312,4 +312,47 @@ func TestValidateRecurringRuleFields(t *testing.T) {
 	}
 }
 
+func TestEstimateFurusatoLimit(t *testing.T) {
+	// 1. Zero gross income -> 0 limit
+	zero := EstimateFurusatoLimit(0, 0, 0, FamilyStatusSingle)
+	if zero.EstimatedLimit != 0 || !zero.SocialInsuranceEstimated {
+		t.Fatalf("expected 0 limit for 0 income, got %+v", zero)
+	}
+
+	// 2. Single 6,000,000 JPY gross income, auto-estimated social insurance (15% = 900,000), iDeCo = 0
+	// Employment deduction: 6,000,000 * 0.2 + 440,000 = 1,640,000 -> employment income = 4,360,000
+	// Deductions: 900,000 (social) + 430,000 (resident basic) = 1,330,000
+	// Taxable income = 3,030,000 -> resident tax income portion = 303,000
+	// Marginal tax rate for 3,030,000 (<= 3,300,000) = 10% (0.10)
+	// Denominator = 1 - 0.10 - (0.10 * 1.021) = 0.7979
+	// Raw = (303,000 * 0.20) / 0.7979 + 2000 = 60,600 / 0.7979 + 2000 = 75,949.36 + 2000 = 77,949.36 -> floored to 100s = 77,900
+	single6M := EstimateFurusatoLimit(6_000_000, 0, 0, FamilyStatusSingle)
+	if !single6M.SocialInsuranceEstimated || single6M.EffectiveSocialInsurance != 900_000 {
+		t.Fatalf("expected auto-estimated social insurance 900,000, got %+v", single6M)
+	}
+	if single6M.EstimatedLimit != 77_900 {
+		t.Fatalf("expected EstimatedLimit = 77900 for 6M single, got %d (%+v)", single6M.EstimatedLimit, single6M)
+	}
+
+	// 3. Explicit social insurance and iDeCo reduce taxable income and lower the limit
+	withIdeco := EstimateFurusatoLimit(6_000_000, 850_000, 276_000, FamilyStatusSingle)
+	if withIdeco.SocialInsuranceEstimated || withIdeco.EffectiveSocialInsurance != 850_000 {
+		t.Fatalf("expected explicit social insurance 850,000, got %+v", withIdeco)
+	}
+	if withIdeco.EstimatedLimit >= single6M.EstimatedLimit {
+		t.Fatalf("expected iDeCo deduction to reduce estimated limit (%d vs %d)", withIdeco.EstimatedLimit, single6M.EstimatedLimit)
+	}
+
+	// 4. Family status deductions reduce limit monotonically: SINGLE > MARRIED_NO_DEP > MARRIED_DEP_1
+	marriedNoDep := EstimateFurusatoLimit(7_000_000, 0, 0, FamilyStatusMarriedNoDep)
+	marriedDep1 := EstimateFurusatoLimit(7_000_000, 0, 0, FamilyStatusMarriedDep1)
+	single7M := EstimateFurusatoLimit(7_000_000, 0, 0, FamilyStatusSingle)
+
+	if !(single7M.EstimatedLimit > marriedNoDep.EstimatedLimit && marriedNoDep.EstimatedLimit > marriedDep1.EstimatedLimit) {
+		t.Fatalf("expected SINGLE (%d) > MARRIED_NO_DEP (%d) > MARRIED_DEP_1 (%d)",
+			single7M.EstimatedLimit, marriedNoDep.EstimatedLimit, marriedDep1.EstimatedLimit)
+	}
+}
+
+
 

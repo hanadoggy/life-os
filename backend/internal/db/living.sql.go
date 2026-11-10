@@ -7,9 +7,91 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createFurusatoDonation = `-- name: CreateFurusatoDonation :one
+INSERT INTO furusato_donations (
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+RETURNING
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+`
+
+type CreateFurusatoDonationParams struct {
+	TaxYear             int32       `json:"tax_year"`
+	DonatedAt           pgtype.Date `json:"donated_at"`
+	Municipality        string      `json:"municipality"`
+	ReturnGift          string      `json:"return_gift"`
+	Amount              int32       `json:"amount"`
+	OnestopMethod       string      `json:"onestop_method"`
+	OnestopCompleted    bool        `json:"onestop_completed"`
+	CompletedAt         *time.Time  `json:"completed_at"`
+	ApplicationDeadline pgtype.Date `json:"application_deadline"`
+	TransactionID       pgtype.UUID `json:"transaction_id"`
+	Memo                pgtype.Text `json:"memo"`
+}
+
+func (q *Queries) CreateFurusatoDonation(ctx context.Context, arg CreateFurusatoDonationParams) (FurusatoDonation, error) {
+	row := q.db.QueryRow(ctx, createFurusatoDonation,
+		arg.TaxYear,
+		arg.DonatedAt,
+		arg.Municipality,
+		arg.ReturnGift,
+		arg.Amount,
+		arg.OnestopMethod,
+		arg.OnestopCompleted,
+		arg.CompletedAt,
+		arg.ApplicationDeadline,
+		arg.TransactionID,
+		arg.Memo,
+	)
+	var i FurusatoDonation
+	err := row.Scan(
+		&i.ID,
+		&i.TaxYear,
+		&i.DonatedAt,
+		&i.Municipality,
+		&i.ReturnGift,
+		&i.Amount,
+		&i.OnestopMethod,
+		&i.OnestopCompleted,
+		&i.CompletedAt,
+		&i.ApplicationDeadline,
+		&i.TransactionID,
+		&i.Memo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const createRecurringExecution = `-- name: CreateRecurringExecution :execrows
 INSERT INTO recurring_executions (
@@ -145,6 +227,19 @@ func (q *Queries) DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (int
 	return result.RowsAffected(), nil
 }
 
+const deleteFurusatoDonation = `-- name: DeleteFurusatoDonation :execrows
+DELETE FROM furusato_donations
+WHERE id = $1
+`
+
+func (q *Queries) DeleteFurusatoDonation(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteFurusatoDonation, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteRecurringRule = `-- name: DeleteRecurringRule :execrows
 DELETE FROM recurring_rules
 WHERE id = $1
@@ -184,6 +279,74 @@ func (q *Queries) GetBudgetByYearMonth(ctx context.Context, arg GetBudgetByYearM
 		&i.VariableBudget,
 		&i.Memo,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getFurusatoDonationByID = `-- name: GetFurusatoDonationByID :one
+SELECT
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+FROM furusato_donations
+WHERE id = $1
+`
+
+func (q *Queries) GetFurusatoDonationByID(ctx context.Context, id pgtype.UUID) (FurusatoDonation, error) {
+	row := q.db.QueryRow(ctx, getFurusatoDonationByID, id)
+	var i FurusatoDonation
+	err := row.Scan(
+		&i.ID,
+		&i.TaxYear,
+		&i.DonatedAt,
+		&i.Municipality,
+		&i.ReturnGift,
+		&i.Amount,
+		&i.OnestopMethod,
+		&i.OnestopCompleted,
+		&i.CompletedAt,
+		&i.ApplicationDeadline,
+		&i.TransactionID,
+		&i.Memo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getFurusatoProfileByYear = `-- name: GetFurusatoProfileByYear :one
+SELECT
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status,
+    updated_at
+FROM furusato_profiles
+WHERE tax_year = $1
+`
+
+func (q *Queries) GetFurusatoProfileByYear(ctx context.Context, taxYear int32) (FurusatoProfile, error) {
+	row := q.db.QueryRow(ctx, getFurusatoProfileByYear, taxYear)
+	var i FurusatoProfile
+	err := row.Scan(
+		&i.TaxYear,
+		&i.GrossIncome,
+		&i.SocialInsurance,
+		&i.IdecoAnnual,
+		&i.FamilyStatus,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -326,6 +489,62 @@ func (q *Queries) ListActiveAutoRecurringRules(ctx context.Context) ([]Recurring
 	return items, nil
 }
 
+const listFurusatoDonationsByYear = `-- name: ListFurusatoDonationsByYear :many
+SELECT
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+FROM furusato_donations
+WHERE tax_year = $1
+ORDER BY donated_at DESC, created_at DESC, id DESC
+`
+
+func (q *Queries) ListFurusatoDonationsByYear(ctx context.Context, taxYear int32) ([]FurusatoDonation, error) {
+	rows, err := q.db.Query(ctx, listFurusatoDonationsByYear, taxYear)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FurusatoDonation{}
+	for rows.Next() {
+		var i FurusatoDonation
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaxYear,
+			&i.DonatedAt,
+			&i.Municipality,
+			&i.ReturnGift,
+			&i.Amount,
+			&i.OnestopMethod,
+			&i.OnestopCompleted,
+			&i.CompletedAt,
+			&i.ApplicationDeadline,
+			&i.TransactionID,
+			&i.Memo,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecurringExecutionsByPeriod = `-- name: ListRecurringExecutionsByPeriod :many
 SELECT
     e.id,
@@ -422,6 +641,85 @@ func (q *Queries) ListRecurringRules(ctx context.Context) ([]RecurringRule, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateFurusatoDonation = `-- name: UpdateFurusatoDonation :one
+UPDATE furusato_donations
+SET
+    tax_year = $2,
+    donated_at = $3,
+    municipality = $4,
+    return_gift = $5,
+    amount = $6,
+    onestop_method = $7,
+    onestop_completed = $8,
+    completed_at = $9,
+    application_deadline = $10,
+    memo = $11
+WHERE id = $1
+RETURNING
+    id,
+    tax_year,
+    donated_at,
+    municipality,
+    return_gift,
+    amount,
+    onestop_method,
+    onestop_completed,
+    completed_at,
+    application_deadline,
+    transaction_id,
+    memo,
+    created_at,
+    updated_at
+`
+
+type UpdateFurusatoDonationParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	TaxYear             int32       `json:"tax_year"`
+	DonatedAt           pgtype.Date `json:"donated_at"`
+	Municipality        string      `json:"municipality"`
+	ReturnGift          string      `json:"return_gift"`
+	Amount              int32       `json:"amount"`
+	OnestopMethod       string      `json:"onestop_method"`
+	OnestopCompleted    bool        `json:"onestop_completed"`
+	CompletedAt         *time.Time  `json:"completed_at"`
+	ApplicationDeadline pgtype.Date `json:"application_deadline"`
+	Memo                pgtype.Text `json:"memo"`
+}
+
+func (q *Queries) UpdateFurusatoDonation(ctx context.Context, arg UpdateFurusatoDonationParams) (FurusatoDonation, error) {
+	row := q.db.QueryRow(ctx, updateFurusatoDonation,
+		arg.ID,
+		arg.TaxYear,
+		arg.DonatedAt,
+		arg.Municipality,
+		arg.ReturnGift,
+		arg.Amount,
+		arg.OnestopMethod,
+		arg.OnestopCompleted,
+		arg.CompletedAt,
+		arg.ApplicationDeadline,
+		arg.Memo,
+	)
+	var i FurusatoDonation
+	err := row.Scan(
+		&i.ID,
+		&i.TaxYear,
+		&i.DonatedAt,
+		&i.Municipality,
+		&i.ReturnGift,
+		&i.Amount,
+		&i.OnestopMethod,
+		&i.OnestopCompleted,
+		&i.CompletedAt,
+		&i.ApplicationDeadline,
+		&i.TransactionID,
+		&i.Memo,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateRecurringRule = `-- name: UpdateRecurringRule :one
@@ -558,6 +856,58 @@ func (q *Queries) UpsertBudget(ctx context.Context, arg UpsertBudgetParams) (Mon
 		&i.VariableBudget,
 		&i.Memo,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertFurusatoProfile = `-- name: UpsertFurusatoProfile :one
+INSERT INTO furusato_profiles (
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+ON CONFLICT (tax_year) DO UPDATE SET
+    gross_income = EXCLUDED.gross_income,
+    social_insurance = EXCLUDED.social_insurance,
+    ideco_annual = EXCLUDED.ideco_annual,
+    family_status = EXCLUDED.family_status
+RETURNING
+    tax_year,
+    gross_income,
+    social_insurance,
+    ideco_annual,
+    family_status,
+    updated_at
+`
+
+type UpsertFurusatoProfileParams struct {
+	TaxYear         int32  `json:"tax_year"`
+	GrossIncome     int32  `json:"gross_income"`
+	SocialInsurance int32  `json:"social_insurance"`
+	IdecoAnnual     int32  `json:"ideco_annual"`
+	FamilyStatus    string `json:"family_status"`
+}
+
+func (q *Queries) UpsertFurusatoProfile(ctx context.Context, arg UpsertFurusatoProfileParams) (FurusatoProfile, error) {
+	row := q.db.QueryRow(ctx, upsertFurusatoProfile,
+		arg.TaxYear,
+		arg.GrossIncome,
+		arg.SocialInsurance,
+		arg.IdecoAnnual,
+		arg.FamilyStatus,
+	)
+	var i FurusatoProfile
+	err := row.Scan(
+		&i.TaxYear,
+		&i.GrossIncome,
+		&i.SocialInsurance,
+		&i.IdecoAnnual,
+		&i.FamilyStatus,
 		&i.UpdatedAt,
 	)
 	return i, err

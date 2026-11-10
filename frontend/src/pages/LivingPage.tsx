@@ -1,7 +1,14 @@
 import { Suspense, useState } from "react";
 import { api } from "../api/client";
-import type { Category, PaymentMethod, RecurringRule } from "../api/types";
+import type {
+  Category,
+  FurusatoDonation,
+  PaymentMethod,
+  RecurringRule,
+} from "../api/types";
 import { BudgetCard } from "../components/living/BudgetCard";
+import { FurusatoDonationDrawer } from "../components/living/FurusatoDonationDrawer";
+import { FurusatoSection } from "../components/living/FurusatoSection";
 import { RecurringRuleDrawer } from "../components/living/RecurringRuleDrawer";
 import { RecurringRulesSection } from "../components/living/RecurringRulesSection";
 import { useResource } from "../hooks/useResource";
@@ -71,6 +78,50 @@ function LivingFixedAndBudgetContent({
   );
 }
 
+function LivingFurusatoContent({
+  year,
+  paymentMethods,
+}: {
+  year: number;
+  paymentMethods: PaymentMethod[];
+}) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingDonation, setEditingDonation] =
+    useState<FurusatoDonation | null>(null);
+
+  const furusatoOverview = useResource(`furusato:${year}`, () =>
+    api.getFurusatoOverview(year)
+  );
+
+  return (
+    <div className={styles.tabContent}>
+      <FurusatoSection
+        taxYear={year}
+        overview={furusatoOverview}
+        onAddDonation={() => {
+          setEditingDonation(null);
+          setDrawerOpen(true);
+        }}
+        onEditDonation={(donation) => {
+          setEditingDonation(donation);
+          setDrawerOpen(true);
+        }}
+      />
+
+      <FurusatoDonationDrawer
+        open={drawerOpen}
+        taxYear={year}
+        editingDonation={editingDonation}
+        paymentMethods={paymentMethods}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingDonation(null);
+        }}
+      />
+    </div>
+  );
+}
+
 export function LivingPage(props: LivingPageProps) {
   const [activeTab, setActiveTab] = useState<LivingTab>("RECURRING");
 
@@ -113,17 +164,19 @@ export function LivingPage(props: LivingPageProps) {
           <LivingFixedAndBudgetContent {...props} />
         </Suspense>
       ) : (
-        <section className={styles.placeholderCard}>
-          <span className={styles.placeholderEyebrow}>FURUSATO NOZEI</span>
-          <h2 className={styles.placeholderTitle}>
-            ふるさと納税 控除上限簡易計算・ワンストップ特例トラッカー
-          </h2>
-          <p className={styles.placeholderText}>
-            ※ Milestone 5 にて実装予定です（2026年度 総務省簡易計算式基準）。
-          </p>
-        </section>
+        <Suspense
+          fallback={
+            <div className={styles.loadingState}>
+              ふるさと納税データを読み込み中...
+            </div>
+          }
+        >
+          <LivingFurusatoContent
+            year={props.year}
+            paymentMethods={props.paymentMethods}
+          />
+        </Suspense>
       )}
     </div>
   );
 }
-
