@@ -19,9 +19,6 @@ services:
 
   app:
     image: ${BACKEND_IMAGE:-lifeos-backend:latest}
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     container_name: lifeos-app
     restart: unless-stopped
     depends_on:
@@ -34,9 +31,6 @@ services:
 
   nginx:
     image: ${NGINX_IMAGE:-lifeos-nginx:latest}
-    build:
-      context: .
-      dockerfile: deploy/nginx/Dockerfile
     container_name: lifeos-nginx
     restart: unless-stopped
     depends_on:

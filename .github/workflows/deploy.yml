@@ -64,6 +64,24 @@ jobs:
         run: |
           tar -czf /tmp/deploy-bundle.tar.gz compose.prod.yaml backend/db/migrations deploy/scripts deploy/systemd
 
+          gcloud compute ssh ${{ env.GCE_INSTANCE }} \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --tunnel-through-iap \
+            --command="
+              set -euo pipefail
+              echo '--- Disk usage before pre-deploy cleanup ---'
+              df -h /
+              sudo rm -f /tmp/lifeos-*.dump /tmp/deploy-bundle.tar.gz
+              sudo docker rm -f lifeos-restore-rehearsal-db >/dev/null 2>&1 || true
+              sudo docker system prune -af >/dev/null 2>&1 || true
+              sudo docker builder prune -af >/dev/null 2>&1 || true
+              sudo journalctl --vacuum-size=50M >/dev/null 2>&1 || true
+              sudo apt-get clean >/dev/null 2>&1 || true
+              echo '--- Disk usage after pre-deploy cleanup ---'
+              df -h /
+            "
+
           gcloud compute scp /tmp/deploy-bundle.tar.gz ${{ env.GCE_INSTANCE }}:/tmp/deploy-bundle.tar.gz \
             --project=${{ env.GCP_PROJECT_ID }} \
             --zone=${{ env.GCP_ZONE }} \
@@ -83,7 +101,10 @@ jobs:
               export NGINX_IMAGE='${{ env.NGINX_IMG }}'
               sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml pull app nginx
               sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml --profile tools run --rm migrate
-              sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml up -d app nginx
+              sudo --preserve-env=BACKEND_IMAGE,NGINX_IMAGE docker compose -f compose.prod.yaml up -d --remove-orphans app nginx
+              sudo docker image prune -af >/dev/null 2>&1 || true
+              echo '--- Disk usage after deploy & image prune ---'
+              df -h /
             "
 
       - name: Verify production /healthz endpoint
