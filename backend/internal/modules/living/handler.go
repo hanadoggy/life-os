@@ -317,55 +317,9 @@ func (h *Handler) handleDeleteFurusatoDonation(w http.ResponseWriter, r *http.Re
 
 
 func (h *Handler) parseYearMonthQuery(r *http.Request, defaultToCurrent bool) (int, int, error) {
-	rawY := strings.TrimSpace(r.URL.Query().Get("year"))
-	rawM := strings.TrimSpace(r.URL.Query().Get("month"))
-
-	if !defaultToCurrent {
-		var fields []httpx.FieldError
-		if rawY == "" {
-			fields = append(fields, httpx.FieldError{Field: "year", Message: "is required"})
-		}
-		if rawM == "" {
-			fields = append(fields, httpx.FieldError{Field: "month", Message: "is required"})
-		}
-		if len(fields) > 0 {
-			return 0, 0, newValidationError(fields[0].Message, fields...)
-		}
-	}
-
-	nowJST := time.Now().In(h.loc)
-	year := nowJST.Year()
-	month := int(nowJST.Month())
-
-	if rawY != "" {
-		y, err := strconv.Atoi(rawY)
-		if err != nil {
-			return 0, 0, newValidationError("year must be an integer", httpx.FieldError{Field: "year", Message: "must be an integer"})
-		}
-		year = y
-	}
-	if rawM != "" {
-		m, err := strconv.Atoi(rawM)
-		if err != nil {
-			return 0, 0, newValidationError("month must be an integer", httpx.FieldError{Field: "month", Message: "must be an integer"})
-		}
-		month = m
-	}
-	return year, month, nil
+	return httpx.ParseYearMonthQuery(r, h.loc, defaultToCurrent)
 }
 
 func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
-	var valErr *ValidationError
-	if errors.As(err, &valErr) {
-		httpx.WriteValidationError(w, valErr.Detail, valErr.Fields...)
-		return
-	}
-
-	if errors.Is(err, ErrNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, "https://hanayor.com/problems/not-found", "Not Found", "The requested resource was not found")
-		return
-	}
-
-	h.logger.ErrorContext(r.Context(), "living_handler_error", slog.String("error", err.Error()))
-	httpx.WriteError(w, http.StatusInternalServerError, "https://hanayor.com/problems/internal-error", "Internal Server Error", "An unexpected error occurred")
+	httpx.WriteServiceError(w, r, h.logger, "living_handler_error", err)
 }

@@ -1,7 +1,6 @@
 package living
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -31,24 +30,14 @@ const (
 
 var (
 	// ErrNotFound indicates the requested resource does not exist.
-	ErrNotFound = errors.New("resource not found")
+	ErrNotFound = httpx.ErrNotFound
 )
 
 // ValidationError represents a 422 domain/input validation failure.
-type ValidationError struct {
-	Detail string
-	Fields []httpx.FieldError
-}
-
-func (e *ValidationError) Error() string {
-	return e.Detail
-}
+type ValidationError = httpx.ValidationError
 
 func newValidationError(detail string, fields ...httpx.FieldError) *ValidationError {
-	return &ValidationError{
-		Detail: detail,
-		Fields: fields,
-	}
+	return httpx.NewValidationError(detail, fields...)
 }
 
 // BudgetItemResponse represents a single monthly_budgets row in API responses.
@@ -313,21 +302,11 @@ func isValidExpenseType(v string) bool {
 }
 
 func formatUUID(u pgtype.UUID) string {
-	if !u.Valid {
-		return ""
-	}
-	b := u.Bytes
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
-		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+	return httpx.FormatUUID(u)
 }
 
 func parseUUID(raw string) (pgtype.UUID, error) {
-	var u pgtype.UUID
-	err := u.Scan(strings.TrimSpace(raw))
-	if err != nil || !u.Valid {
-		return pgtype.UUID{}, fmt.Errorf("invalid UUID %q", raw)
-	}
-	return u, nil
+	return httpx.ParseUUID(raw)
 }
 
 // FurusatoProfileResponse represents the user's annual tax/income profile for Furusato Nozei estimation.

@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -325,46 +324,10 @@ func (h *Handler) handleUpdateSettlementStatus(w http.ResponseWriter, r *http.Re
 }
 
 func (h *Handler) parseYearMonthQuery(r *http.Request) (int, int, error) {
-	nowJST := time.Now().In(h.loc)
-	year := nowJST.Year()
-	month := int(nowJST.Month())
-
-	if rawY := strings.TrimSpace(r.URL.Query().Get("year")); rawY != "" {
-		y, err := strconv.Atoi(rawY)
-		if err != nil {
-			return 0, 0, newValidationError("year must be an integer", httpx.FieldError{Field: "year", Message: "must be an integer"})
-		}
-		year = y
-	}
-	if rawM := strings.TrimSpace(r.URL.Query().Get("month")); rawM != "" {
-		m, err := strconv.Atoi(rawM)
-		if err != nil {
-			return 0, 0, newValidationError("month must be an integer", httpx.FieldError{Field: "month", Message: "must be an integer"})
-		}
-		month = m
-	}
-	return year, month, nil
+	return httpx.ParseYearMonthQuery(r, h.loc, true)
 }
 
 func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
-	var valErr *ValidationError
-	if errors.As(err, &valErr) {
-		httpx.WriteValidationError(w, valErr.Detail, valErr.Fields...)
-		return
-	}
-
-	var conflictErr *ConflictError
-	if errors.As(err, &conflictErr) {
-		httpx.WriteError(w, http.StatusConflict, "https://hanayor.com/problems/conflict", "Conflict", conflictErr.Detail)
-		return
-	}
-
-	if errors.Is(err, ErrNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, "https://hanayor.com/problems/not-found", "Not Found", "The requested resource was not found")
-		return
-	}
-
-	h.logger.ErrorContext(r.Context(), "ledger_handler_error", slog.String("error", err.Error()))
-	httpx.WriteError(w, http.StatusInternalServerError, "https://hanayor.com/problems/internal-error", "Internal Server Error", "An unexpected error occurred")
+	httpx.WriteServiceError(w, r, h.logger, "ledger_handler_error", err)
 }
 
