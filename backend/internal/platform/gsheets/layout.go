@@ -264,18 +264,18 @@ type LedgerRowData struct {
 	PointsUsed      int32
 	NetAmount       int32
 	ReceivableTotal int32
-	MyShare         int32 // Column E: my_share
+	MyShare         int32 // my_share (after points & RECEIVABLE settlements)
 	Memo            string
 }
 
 // FormatRowValues builds the A..F values slice for the monthly sheet tab.
 // Column order:
 //   - A: Date (YYYY-MM-DD)
-//   - B: Expense Type (固定費 / 変動費)
+//   - B: Expense Type (固定費 / 変動費 / 収入)
 //   - C: Category (食料品, 通信費, etc.)
 //   - D: Title / Store (項目)
-//   - E: Amount (my_share integer)
-//   - F: Memo (with optional accounting breakdown suffix when gross != my_share)
+//   - E: Amount (pre-point amount: gross_amount - receivable_total, matching ParseSheetRow)
+//   - F: Memo (with optional settlement breakdown and parser-compatible "XXポイント使用" / "全てポイント使用" suffix)
 func FormatRowValues(row LedgerRowData) []any {
 	colB := "変動費"
 	if row.Kind == "INCOME" {
@@ -289,6 +289,11 @@ func FormatRowValues(row LedgerRowData) []any {
 		colC = ja
 	}
 
+	colEAmount := row.GrossAmount - row.ReceivableTotal
+	if colEAmount < 0 {
+		colEAmount = 0
+	}
+
 	memoText := FormatSheetMemo(row.Memo, row.GrossAmount, row.PointsUsed, row.ReceivableTotal)
 
 	return []any{
@@ -296,7 +301,7 @@ func FormatRowValues(row LedgerRowData) []any {
 		colB,
 		colC,
 		SanitizeSheetCell(row.Title),
-		row.MyShare,
+		colEAmount,
 		SanitizeSheetCell(memoText),
 	}
 }
@@ -330,29 +335,44 @@ func BuildDeterministicSourceRef(year int, tabName string, txDate time.Time, tit
 	return fmt.Sprintf("%d/%s/%s#%d", year, strings.TrimSpace(tabName), shortHash, ordinal)
 }
 
-// FormatSheetMemo formats the memo cell, appending "総額 X / P Y / 精算 Z" if points or settlements were used.
+// FormatSheetMemo formats the memo cell, appending settlement details ("総額 X / 精算 Z") when receivable > 0
+// and parser-compatible point usage ("全てポイント使用" or "Nポイント使用") at the end when points > 0.
 func FormatSheetMemo(userMemo string, gross, points, receivable int32) string {
-	base := strings.TrimSpace(userMemo)
-	if points == 0 && receivable == 0 {
-		return base
+	res := strings.TrimSpace(userMemo)
+	if points <= 0 && receivable <= 0 {
+		return res
 	}
 
-	var parts []string
-	parts = append(parts, fmt.Sprintf("総額 %s", formatCommaInt(gross)))
-	if points > 0 {
-		parts = append(parts, fmt.Sprintf("P %s", formatCommaInt(points)))
-	}
 	if receivable > 0 {
-		parts = append(parts, fmt.Sprintf("精算 %s", formatCommaInt(receivable)))
+		settlementSuffix := fmt.Sprintf("総額 %s / 精算 %s", formatCommaInt(gross), formatCommaInt(receivable))
+		if res == "" {
+			res = settlementSuffix
+		} else if !strings.Contains(res, settlementSuffix) {
+			res = fmt.Sprintf("%s (%s)", res, settlementSuffix)
+		}
 	}
-	suffix := strings.Join(parts, " / ")
-	if base == "" {
-		return suffix
+
+	if points > 0 {
+		colEAmount := gross - receivable
+		if colEAmount < 0 {
+			colEAmount = 0
+		}
+		if ExtractExplicitPointsFromMemo(res, colEAmount) != points {
+			pointNote := fmt.Sprintf("%dポイント使用", points)
+			if gross > 0 && points >= gross {
+				pointNote = "全てポイント使用"
+			}
+			if res == "" {
+				res = pointNote
+			} else if strings.HasSuffix(res, "、") || strings.HasSuffix(res, ",") {
+				res += pointNote
+			} else {
+				res += "、" + pointNote
+			}
+		}
 	}
-	if strings.Contains(base, suffix) {
-		return base
-	}
-	return fmt.Sprintf("%s (%s)", base, suffix)
+
+	return res
 }
 
 func formatCommaInt(n int32) string {

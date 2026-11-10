@@ -192,7 +192,7 @@ func TestLayoutAndParsing(t *testing.T) {
 		t.Errorf("expected 2580 points for ポイント2580円使用, got %d", got)
 	}
 
-	// 4. FormatRowValues (A..F output)
+	// 4. FormatRowValues (A..F output) - unified with sheet parser format
 	vals := FormatRowValues(LedgerRowData{
 		TxID:            "test-uuid",
 		TxDate:          "2026-11-03",
@@ -210,12 +210,79 @@ func TestLayoutAndParsing(t *testing.T) {
 	if len(vals) != 6 {
 		t.Fatalf("expected 6 columns (A..F), got %d", len(vals))
 	}
-	if vals[1] != "変動費" || vals[2] != "食料品" || vals[4] != int32(1000) {
+	if vals[1] != "変動費" || vals[2] != "食料品" || vals[4] != int32(1600) {
 		t.Errorf("unexpected formatted row: %#v", vals)
 	}
-	wantMemo := "エイキ・テツ (総額 3,600 / P 600 / 精算 2,000)"
+	wantMemo := "エイキ・テツ (総額 3,600 / 精算 2,000)、600ポイント使用"
 	if vals[5] != wantMemo {
 		t.Errorf("memo = %q, want %q", vals[5], wantMemo)
+	}
+
+	// 4b. Points-only & full-points export + round-trip compatibility with ParseSheetRow
+	partialPtVals := FormatRowValues(LedgerRowData{
+		TxID:            "test-uuid-2",
+		TxDate:          "2026-11-04",
+		Kind:            "EXPENSE",
+		ExpenseTypeCode: "VARIABLE",
+		CategoryCode:    "GROCERIES",
+		Title:           "成城石井",
+		GrossAmount:     2480,
+		PointsUsed:      480,
+		NetAmount:       2000,
+		ReceivableTotal: 0,
+		MyShare:         2000,
+		Memo:            "買い物",
+	})
+	if partialPtVals[4] != int32(2480) || partialPtVals[5] != "買い物、480ポイント使用" {
+		t.Fatalf("unexpected partial-point formatted row: %#v", partialPtVals)
+	}
+	roundTripPartial, skip, err := ParseSheetRow(1, []string{
+		fmt.Sprint(partialPtVals[0]),
+		fmt.Sprint(partialPtVals[1]),
+		fmt.Sprint(partialPtVals[2]),
+		fmt.Sprint(partialPtVals[3]),
+		fmt.Sprint(partialPtVals[4]),
+		fmt.Sprint(partialPtVals[5]),
+	}, -1, 2026, 11, true)
+	if err != nil || skip || roundTripPartial.GrossAmount != 2480 || roundTripPartial.PointsUsed != 480 {
+		t.Fatalf("partial-point round-trip mismatch: parsed=%+v skip=%v err=%v", roundTripPartial, skip, err)
+	}
+
+	fullPtVals := FormatRowValues(LedgerRowData{
+		TxID:            "test-uuid-3",
+		TxDate:          "2026-11-05",
+		Kind:            "EXPENSE",
+		ExpenseTypeCode: "VARIABLE",
+		CategoryCode:    "GROCERIES",
+		Title:           "ドリンク",
+		GrossAmount:     899,
+		PointsUsed:      899,
+		NetAmount:       0,
+		ReceivableTotal: 0,
+		MyShare:         0,
+		Memo:            "",
+	})
+	if fullPtVals[4] != int32(899) || fullPtVals[5] != "全てポイント使用" {
+		t.Fatalf("unexpected full-point formatted row: %#v", fullPtVals)
+	}
+	roundTripFull, skip, err := ParseSheetRow(2, []string{
+		fmt.Sprint(fullPtVals[0]),
+		fmt.Sprint(fullPtVals[1]),
+		fmt.Sprint(fullPtVals[2]),
+		fmt.Sprint(fullPtVals[3]),
+		fmt.Sprint(fullPtVals[4]),
+		fmt.Sprint(fullPtVals[5]),
+	}, -1, 2026, 11, true)
+	if err != nil || skip || roundTripFull.GrossAmount != 899 || roundTripFull.PointsUsed != 899 {
+		t.Fatalf("full-point round-trip mismatch: parsed=%+v skip=%v err=%v", roundTripFull, skip, err)
+	}
+
+	// Idempotent memo formatting when user memo already states the same points
+	if got := FormatSheetMemo("ドリンク、全てポイント使用", 899, 899, 0); got != "ドリンク、全てポイント使用" {
+		t.Errorf("expected no duplicate point suffix, got %q", got)
+	}
+	if got := FormatSheetMemo("午後の紅茶、ポイント2580円使用", 6673, 2580, 0); got != "午後の紅茶、ポイント2580円使用" {
+		t.Errorf("expected no duplicate point suffix, got %q", got)
 	}
 
 	// 5. Formula injection escaping & deterministic source_ref
