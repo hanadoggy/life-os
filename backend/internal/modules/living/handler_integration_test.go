@@ -384,6 +384,19 @@ func TestRecurringRulesAndSchedulerIdempotencyIntegration(t *testing.T) {
 		t.Fatalf("expected CreatedCount = 0 on duplicate sync, got %+v", syncResp)
 	}
 
+	// 6b. Syncing a future month (e.g. 2099-12) must return CreatedCount = 0 without creating transactions prematurely
+	resp, body = doJSONRequest(t, client, http.MethodPost, ts.URL+"/api/v1/living/recurring-rules/sync", map[string]any{
+		"year":  2099,
+		"month": 12,
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("future month POST /recurring-rules/sync status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	_ = json.Unmarshal(body, &syncResp)
+	if syncResp.CreatedCount != 0 {
+		t.Fatalf("expected CreatedCount = 0 for future month sync, got %+v", syncResp)
+	}
+
 	// 7. Verify 2026-02 transactions in Ledger and sheet_sync_outbox entries
 	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=2", nil)
 	if resp.StatusCode != http.StatusOK {
@@ -591,6 +604,38 @@ func TestFurusatoProfileDonationsAndExpenseSyncIntegration(t *testing.T) {
 	_ = json.Unmarshal(body, &overview)
 	if len(overview.Items) != 1 || overview.DonatedTotal != 15000 || overview.UncompletedOnestopCount != 0 {
 		t.Fatalf("unexpected overview after delete: %+v", overview)
+	}
+
+	// 8. Update donation1 amount & return_gift -> linked ledger transaction and outbox must be updated in sync
+	resp, body = doJSONRequest(t, client, http.MethodPatch, ts.URL+"/api/v1/living/furusato/donations/"+donation1.ID, map[string]any{
+		"amount":      18000,
+		"return_gift": "いくら醤油漬け 750g",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PATCH furusato donation1 amount status = %d, body = %s", resp.StatusCode, string(body))
+	}
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11", nil)
+	_ = json.Unmarshal(body, &txList)
+	if len(txList.Items) != 1 || txList.Items[0].GrossAmount != 18000 || txList.Items[0].Title != "ふるさと納税 (北海道白糠町・いくら醤油漬け 750g)" {
+		t.Fatalf("expected linked transaction updated to 18000 JPY and new title, got %+v", txList.Items)
+	}
+
+	// 9. Delete donation1 -> linked ledger transaction must be soft-deleted and DELETE enqueued in sheet_sync_outbox
+	resp, _ = doJSONRequest(t, client, http.MethodDelete, ts.URL+"/api/v1/living/furusato/donations/"+donation1.ID, nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("DELETE furusato donation1 status = %d, want 204", resp.StatusCode)
+	}
+	resp, body = doJSONRequest(t, client, http.MethodGet, ts.URL+"/api/v1/transactions?year=2026&month=11", nil)
+	_ = json.Unmarshal(body, &txList)
+	if len(txList.Items) != 0 {
+		t.Fatalf("expected linked transaction to be soft-deleted after donation1 deletion, got %+v", txList.Items)
+	}
+	var deleteOutboxCount int
+	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM sheet_sync_outbox WHERE op = 'DELETE'").Scan(&deleteOutboxCount); err != nil {
+		t.Fatalf("count sheet_sync_outbox DELETE: %v", err)
+	}
+	if deleteOutboxCount != 1 {
+		t.Fatalf("expected 1 sheet_sync_outbox DELETE row after linked furusato donation delete, got %d", deleteOutboxCount)
 	}
 }
 

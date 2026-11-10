@@ -436,8 +436,7 @@ func (s *Service) DeleteRecurringRule(ctx context.Context, id pgtype.UUID) error
 // SyncRecurringRules triggers manual catch-up execution for the given (year, month).
 // For the current JST month, rules with effectiveDay <= today's day are executed.
 // For a past month, all rules due in that month (up to the last day of that month) are executed.
-// For a future month, no rules are due yet unless the user explicitly syncs that month's rules up to its last day?
-// Wait: let's check how manual sync should behave when a user clicks "[今月分を即時反映]" or tests sync with a specific year/month.
+// For a future month after the current JST month, no rules are due yet.
 func (s *Service) SyncRecurringRules(ctx context.Context, year, month int) (SyncRecurringRulesResponse, error) {
 	if err := validateYearMonth(year, month, false); err != nil {
 		return SyncRecurringRulesResponse{}, err
@@ -445,6 +444,16 @@ func (s *Service) SyncRecurringRules(ctx context.Context, year, month int) (Sync
 
 	nowJST := time.Now().In(s.loc)
 	curY, curM, curD := nowJST.Year(), int(nowJST.Month()), nowJST.Day()
+
+	if year > curY || (year == curY && month > curM) {
+		return SyncRecurringRulesResponse{
+			Year:           year,
+			Month:          month,
+			TargetPeriod:   fmt.Sprintf("%04d-%02d", year, month),
+			CreatedCount:   0,
+			TransactionIDs: []string{},
+		}, nil
+	}
 
 	var upToDay int
 	if year == curY && month == curM {
@@ -748,13 +757,7 @@ func (s *Service) CreateFurusatoDonation(ctx context.Context, req CreateFurusato
 			return FurusatoDonationResponse{}, err
 		}
 
-		txTitle := fmt.Sprintf("ふるさと納税 (%s)", trimmedMunicipality)
-		if trimmedGift != "" {
-			candidate := fmt.Sprintf("ふるさと納税 (%s・%s)", trimmedMunicipality, trimmedGift)
-			if len([]rune(candidate)) <= 200 {
-				txTitle = candidate
-			}
-		}
+		txTitle := formatFurusatoExpenseTitle(trimmedMunicipality, trimmedGift)
 
 		createdTxID, err := qtx.CreateTransaction(ctx, db.CreateTransactionParams{
 			TxDate:          pgtype.Date{Time: parsedDonatedAt, Valid: true},
@@ -899,12 +902,23 @@ func (s *Service) UpdateFurusatoDonation(ctx context.Context, id pgtype.UUID, re
 		memo = pgtype.Text{String: strings.TrimSpace(*memoPtr), Valid: true}
 	}
 
-	updated, err := s.queries.UpdateFurusatoDonation(ctx, db.UpdateFurusatoDonationParams{
+	trimmedMunicipality := strings.TrimSpace(municipality)
+	trimmedGift := strings.TrimSpace(returnGift)
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return FurusatoDonationResponse{}, fmt.Errorf("begin update furusato donation tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := s.queries.WithTx(tx)
+
+	updated, err := qtx.UpdateFurusatoDonation(ctx, db.UpdateFurusatoDonationParams{
 		ID:                  id,
 		TaxYear:             int32(taxYear),
 		DonatedAt:           pgtype.Date{Time: parsedDonatedAt, Valid: true},
-		Municipality:        strings.TrimSpace(municipality),
-		ReturnGift:          strings.TrimSpace(returnGift),
+		Municipality:        trimmedMunicipality,
+		ReturnGift:          trimmedGift,
 		Amount:              amount,
 		OnestopMethod:       onestopMethod,
 		OnestopCompleted:    onestopCompleted,
@@ -916,19 +930,127 @@ func (s *Service) UpdateFurusatoDonation(ctx context.Context, id pgtype.UUID, re
 		return FurusatoDonationResponse{}, fmt.Errorf("update furusato donation: %w", err)
 	}
 
+	ledgerFieldsChanged := req.DonatedAt != nil ||
+		req.Municipality != nil ||
+		req.ReturnGift != nil ||
+		req.Amount != nil ||
+		req.Memo != nil
+
+	syncedLedgerTx := false
+	if updated.TransactionID.Valid && ledgerFieldsChanged {
+		existingEntry, err := qtx.GetLedgerEntryByID(ctx, updated.TransactionID)
+		if err == nil {
+			txTitle := formatFurusatoExpenseTitle(trimmedMunicipality, trimmedGift)
+			grossAmount := amount
+			if existingEntry.PointsUsed > grossAmount {
+				grossAmount = existingEntry.PointsUsed
+			}
+			if _, err := qtx.UpdateTransaction(ctx, db.UpdateTransactionParams{
+				ID:              updated.TransactionID,
+				TxDate:          pgtype.Date{Time: parsedDonatedAt, Valid: true},
+				Kind:            existingEntry.Kind,
+				ExpenseType:     existingEntry.ExpenseType,
+				CategoryID:      existingEntry.CategoryID,
+				Title:           txTitle,
+				GrossAmount:     grossAmount,
+				PointsUsed:      existingEntry.PointsUsed,
+				PaymentMethodID: existingEntry.PaymentMethodID,
+				Memo:            memo,
+				Metadata:        existingEntry.Metadata,
+			}); err != nil {
+				return FurusatoDonationResponse{}, fmt.Errorf("update linked furusato expense transaction: %w", err)
+			}
+			if _, err := qtx.EnqueueSheetSync(ctx, db.EnqueueSheetSyncParams{
+				TransactionID: updated.TransactionID,
+				Op:            OutboxOpUpsert,
+			}); err != nil {
+				return FurusatoDonationResponse{}, fmt.Errorf("enqueue sheet sync for updated furusato donation: %w", err)
+			}
+			syncedLedgerTx = true
+		} else if errors.Is(err, pgx.ErrNoRows) {
+			if err := qtx.ClearFurusatoDonationTransactionLink(ctx, updated.TransactionID); err != nil {
+				return FurusatoDonationResponse{}, fmt.Errorf("clear stale furusato transaction link: %w", err)
+			}
+			updated.TransactionID = pgtype.UUID{}
+		} else {
+			return FurusatoDonationResponse{}, fmt.Errorf("load linked furusato transaction: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return FurusatoDonationResponse{}, fmt.Errorf("commit update furusato donation: %w", err)
+	}
+
+	if syncedLedgerTx {
+		s.notifyWorker()
+	}
+
 	return mapFurusatoDonationRow(updated), nil
 }
 
-// DeleteFurusatoDonation deletes a Furusato Nozei donation by UUID.
+// DeleteFurusatoDonation deletes a Furusato Nozei donation by UUID and soft-deletes any linked expense transaction.
 func (s *Service) DeleteFurusatoDonation(ctx context.Context, id pgtype.UUID) error {
-	rows, err := s.queries.DeleteFurusatoDonation(ctx, id)
+	current, err := s.queries.GetFurusatoDonationByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("get furusato donation: %w", err)
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin delete furusato donation tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := s.queries.WithTx(tx)
+
+	rows, err := qtx.DeleteFurusatoDonation(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete furusato donation: %w", err)
 	}
 	if rows == 0 {
 		return ErrNotFound
 	}
+
+	deletedLinkedTx := false
+	if current.TransactionID.Valid {
+		softRows, err := qtx.SoftDeleteTransaction(ctx, current.TransactionID)
+		if err != nil {
+			return fmt.Errorf("soft delete linked furusato transaction: %w", err)
+		}
+		if softRows > 0 {
+			if _, err := qtx.EnqueueSheetSync(ctx, db.EnqueueSheetSyncParams{
+				TransactionID: current.TransactionID,
+				Op:            OutboxOpDelete,
+			}); err != nil {
+				return fmt.Errorf("enqueue sheet delete for linked furusato transaction: %w", err)
+			}
+			deletedLinkedTx = true
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit delete furusato donation: %w", err)
+	}
+
+	if deletedLinkedTx {
+		s.notifyWorker()
+	}
+
 	return nil
+}
+
+func formatFurusatoExpenseTitle(municipality, returnGift string) string {
+	txTitle := fmt.Sprintf("ふるさと納税 (%s)", municipality)
+	if returnGift != "" {
+		candidate := fmt.Sprintf("ふるさと納税 (%s・%s)", municipality, returnGift)
+		if len([]rune(candidate)) <= 200 {
+			txTitle = candidate
+		}
+	}
+	return txTitle
 }
 
 func (s *Service) resolveFurusatoPaymentMethod(ctx context.Context, qtx *db.Queries, requestedID *int32) (int32, error) {

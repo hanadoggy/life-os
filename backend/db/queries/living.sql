@@ -187,14 +187,16 @@ WHERE e.target_period = $1
 
 -- name: GetRecurringExecutionByRuleAndPeriod :one
 SELECT
-    id,
-    rule_id,
-    target_period,
-    transaction_id,
-    executed_at
-FROM recurring_executions
-WHERE rule_id = $1
-  AND target_period = $2;
+    e.id,
+    e.rule_id,
+    e.target_period,
+    e.transaction_id,
+    e.executed_at
+FROM recurring_executions e
+JOIN transactions t ON t.id = e.transaction_id
+WHERE e.rule_id = $1
+  AND e.target_period = $2
+  AND t.deleted_at IS NULL;
 
 -- name: CreateRecurringExecution :execrows
 INSERT INTO recurring_executions (
@@ -242,42 +244,47 @@ RETURNING
 
 -- name: ListFurusatoDonationsByYear :many
 SELECT
-    id,
-    tax_year,
-    donated_at,
-    municipality,
-    return_gift,
-    amount,
-    onestop_method,
-    onestop_completed,
-    completed_at,
-    application_deadline,
-    transaction_id,
-    memo,
-    created_at,
-    updated_at
-FROM furusato_donations
-WHERE tax_year = $1
-ORDER BY donated_at DESC, created_at DESC, id DESC;
+    d.id,
+    d.tax_year,
+    d.donated_at,
+    d.municipality,
+    d.return_gift,
+    d.amount,
+    d.onestop_method,
+    d.onestop_completed,
+    d.completed_at,
+    d.application_deadline,
+    d.transaction_id,
+    d.memo,
+    d.created_at,
+    d.updated_at
+FROM furusato_donations d
+WHERE d.tax_year = $1
+ORDER BY d.donated_at DESC, d.created_at DESC, d.id DESC;
 
 -- name: GetFurusatoDonationByID :one
 SELECT
-    id,
-    tax_year,
-    donated_at,
-    municipality,
-    return_gift,
-    amount,
-    onestop_method,
-    onestop_completed,
-    completed_at,
-    application_deadline,
-    transaction_id,
-    memo,
-    created_at,
-    updated_at
-FROM furusato_donations
-WHERE id = $1;
+    d.id,
+    d.tax_year,
+    d.donated_at,
+    d.municipality,
+    d.return_gift,
+    d.amount,
+    d.onestop_method,
+    d.onestop_completed,
+    d.completed_at,
+    d.application_deadline,
+    d.transaction_id,
+    d.memo,
+    d.created_at,
+    d.updated_at
+FROM furusato_donations d
+WHERE d.id = $1;
+
+-- name: ClearFurusatoDonationTransactionLink :exec
+UPDATE furusato_donations
+SET transaction_id = NULL
+WHERE transaction_id = $1;
 
 -- name: CreateFurusatoDonation :one
 INSERT INTO furusato_donations (

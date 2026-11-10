@@ -596,6 +596,12 @@ func (s *Service) UpdateTransaction(ctx context.Context, id pgtype.UUID, req Upd
 		}
 		return TransactionResponse{}, fmt.Errorf("get payment method: %w", err)
 	}
+	if req.PaymentMethodID != nil && !pm.IsActive {
+		return TransactionResponse{}, newValidationError(
+			"payment method is inactive",
+			httpx.FieldError{Field: "payment_method_id", Message: "payment method is inactive"},
+		)
+	}
 
 	title := current.Title
 	if req.Title != nil {
@@ -755,6 +761,10 @@ func (s *Service) DeleteTransaction(ctx context.Context, id pgtype.UUID) error {
 	}
 	if rows == 0 {
 		return ErrNotFound
+	}
+
+	if err := qtx.ClearFurusatoDonationTransactionLink(ctx, id); err != nil {
+		return fmt.Errorf("clear furusato donation transaction link: %w", err)
 	}
 
 	if _, err := qtx.EnqueueSheetSync(ctx, db.EnqueueSheetSyncParams{
@@ -935,7 +945,8 @@ func (s *Service) CreatePreset(ctx context.Context, req CreatePresetRequest) (Pr
 		return PresetResponse{}, err
 	}
 
-	if _, err := s.queries.GetCategoryByID(ctx, req.CategoryID); err != nil {
+	cat, err := s.queries.GetCategoryByID(ctx, req.CategoryID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return PresetResponse{}, newValidationError(
 				"category_id does not exist",
@@ -944,10 +955,17 @@ func (s *Service) CreatePreset(ctx context.Context, req CreatePresetRequest) (Pr
 		}
 		return PresetResponse{}, fmt.Errorf("get category: %w", err)
 	}
+	if !cat.IsActive {
+		return PresetResponse{}, newValidationError(
+			"category is inactive",
+			httpx.FieldError{Field: "category_id", Message: "category is inactive"},
+		)
+	}
 
 	var defPM pgtype.Int4
 	if req.DefaultPaymentMethodID != nil {
-		if _, err := s.queries.GetPaymentMethodByID(ctx, *req.DefaultPaymentMethodID); err != nil {
+		pm, err := s.queries.GetPaymentMethodByID(ctx, *req.DefaultPaymentMethodID)
+		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return PresetResponse{}, newValidationError(
 					"default_payment_method_id does not exist",
@@ -955,6 +973,12 @@ func (s *Service) CreatePreset(ctx context.Context, req CreatePresetRequest) (Pr
 				)
 			}
 			return PresetResponse{}, fmt.Errorf("get payment method: %w", err)
+		}
+		if !pm.IsActive {
+			return PresetResponse{}, newValidationError(
+				"payment method is inactive",
+				httpx.FieldError{Field: "default_payment_method_id", Message: "payment method is inactive"},
+			)
 		}
 		defPM = pgtype.Int4{Int32: *req.DefaultPaymentMethodID, Valid: true}
 	}
@@ -1041,7 +1065,8 @@ func (s *Service) UpdatePreset(ctx context.Context, id pgtype.UUID, req UpdatePr
 	}
 
 	if req.CategoryID != nil {
-		if _, err := s.queries.GetCategoryByID(ctx, categoryID); err != nil {
+		cat, err := s.queries.GetCategoryByID(ctx, categoryID)
+		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return PresetResponse{}, newValidationError(
 					"category_id does not exist",
@@ -1050,9 +1075,16 @@ func (s *Service) UpdatePreset(ctx context.Context, id pgtype.UUID, req UpdatePr
 			}
 			return PresetResponse{}, fmt.Errorf("get category: %w", err)
 		}
+		if !cat.IsActive {
+			return PresetResponse{}, newValidationError(
+				"category is inactive",
+				httpx.FieldError{Field: "category_id", Message: "category is inactive"},
+			)
+		}
 	}
 	if req.DefaultPaymentMethodID != nil {
-		if _, err := s.queries.GetPaymentMethodByID(ctx, *req.DefaultPaymentMethodID); err != nil {
+		pm, err := s.queries.GetPaymentMethodByID(ctx, *req.DefaultPaymentMethodID)
+		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return PresetResponse{}, newValidationError(
 					"default_payment_method_id does not exist",
@@ -1060,6 +1092,12 @@ func (s *Service) UpdatePreset(ctx context.Context, id pgtype.UUID, req UpdatePr
 				)
 			}
 			return PresetResponse{}, fmt.Errorf("get payment method: %w", err)
+		}
+		if !pm.IsActive {
+			return PresetResponse{}, newValidationError(
+				"payment method is inactive",
+				httpx.FieldError{Field: "default_payment_method_id", Message: "payment method is inactive"},
+			)
 		}
 	}
 

@@ -158,6 +158,7 @@ export function QuickExpenseDrawer({
       : 0;
   const myShare = Math.max(0, netAmount - receivableTotal);
 
+  const isEditingIncome = editingTransaction?.kind === "INCOME";
   const hasSettledItems =
     editingTransaction?.settlements.some((s) => s.settled_at !== null) ?? false;
 
@@ -302,7 +303,11 @@ export function QuickExpenseDrawer({
           <div className={styles.dragPill} />
           <div className={styles.sheetHeader}>
             <h2 className={styles.sheetTitle}>
-              {editingTransaction ? "支出の編集" : "クイック支出記録"}
+              {editingTransaction
+                ? isEditingIncome
+                  ? "収入の編集"
+                  : "支出の編集"
+                : "クイック支出記録"}
             </h2>
             <button
               type="button"
@@ -352,20 +357,22 @@ export function QuickExpenseDrawer({
 
           {/* Expense Type & Date Row */}
           <div className={styles.row2Col}>
-            <div className={styles.segmented}>
-              {(["VARIABLE", "FIXED"] as ExpenseType[]).map((et) => (
-                <button
-                  key={et}
-                  type="button"
-                  className={`${styles.segBtn} ${
-                    expenseType === et ? styles.segActive : ""
-                  }`}
-                  onClick={() => setExpenseType(et)}
-                >
-                  {formatExpenseType(et)}
-                </button>
-              ))}
-            </div>
+            {!isEditingIncome && (
+              <div className={styles.segmented}>
+                {(["VARIABLE", "FIXED"] as ExpenseType[]).map((et) => (
+                  <button
+                    key={et}
+                    type="button"
+                    className={`${styles.segBtn} ${
+                      expenseType === et ? styles.segActive : ""
+                    }`}
+                    onClick={() => setExpenseType(et)}
+                  >
+                    {formatExpenseType(et)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <input
               type="date"
@@ -433,18 +440,21 @@ export function QuickExpenseDrawer({
               pointsUsed={pointsUsed}
               onChangeGross={setGrossAmount}
               onChangePoints={setPointsUsed}
+              showPointsToggle={!isEditingIncome}
             />
           )}
 
           {/* PayPay Settlement Inline Section */}
-          <SettlementInlineForm
-            mode={settlementMode}
-            onChangeMode={setSettlementMode}
-            netAmount={netAmount}
-            settlements={settlements}
-            onChangeSettlements={setSettlements}
-            disabled={hasSettledItems}
-          />
+          {!isEditingIncome && (
+            <SettlementInlineForm
+              mode={settlementMode}
+              onChangeMode={setSettlementMode}
+              netAmount={netAmount}
+              settlements={settlements}
+              onChangeSettlements={setSettlements}
+              disabled={hasSettledItems}
+            />
+          )}
 
           <input
             type="text"

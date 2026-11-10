@@ -77,6 +77,8 @@ export function TransactionList({
         invalidateResources("transactions");
         invalidateResources("summary");
         invalidateResources("settlements");
+        invalidateResources("furusato");
+        invalidateResources("recurring-rules");
       } catch {
         invalidateResources("transactions");
       }

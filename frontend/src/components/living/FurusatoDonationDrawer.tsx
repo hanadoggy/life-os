@@ -110,6 +110,10 @@ export function FurusatoDonationDrawer({
     try {
       await api.deleteFurusatoDonation(editingDonation.id);
       invalidateResources("furusato");
+      if (editingDonation.transaction_id) {
+        invalidateResources("transactions");
+        invalidateResources("summary");
+      }
       onClose();
     } catch {
       // Ignore
@@ -163,7 +167,10 @@ export function FurusatoDonationDrawer({
         }
 
         invalidateResources("furusato");
-        if (createExpense && !editingDonation) {
+        if (
+          (createExpense && !editingDonation) ||
+          Boolean(editingDonation?.transaction_id)
+        ) {
           invalidateResources("transactions");
           invalidateResources("summary");
         }

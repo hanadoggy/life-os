@@ -26,6 +26,7 @@ const (
 	PaymentMethodAdvance = "ADVANCE"
 	SourceApp            = "APP"
 	OutboxOpUpsert       = "UPSERT"
+	OutboxOpDelete       = "DELETE"
 )
 
 var (
