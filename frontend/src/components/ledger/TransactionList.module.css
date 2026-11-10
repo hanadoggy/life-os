@@ -51,7 +51,7 @@
 
 .tabActive {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-primary-fg);
   font-weight: 600;
 }
 
@@ -199,7 +199,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--color-accent);
-  background: var(--color-accent-soft);
+  background: var(--color-accent-tint);
   border-radius: var(--radius-sm);
 }
 
@@ -211,7 +211,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: var(--color-primary-tint);
   border-radius: var(--radius-sm);
 }
 
@@ -270,7 +270,7 @@
 
 .deleteBtn:hover {
   color: var(--color-danger);
-  background: rgba(185, 28, 28, 0.08);
+  background: var(--color-danger-tint);
 }
 
 .deleteBtn:active {
@@ -297,7 +297,7 @@
   gap: 6px;
   padding: 9px 16px;
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-primary-fg);
   font-size: 0.82rem;
   font-weight: 600;
   border-radius: var(--radius-sm);

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { formatJPY, type DailyCumulativePoint } from "../../api/types";
+import {
+  formatJPY,
+  getTodayJSTDateString,
+  type DailyCumulativePoint,
+} from "../../api/types";
 import styles from "./CumulativeChart.module.css";
 
 interface CumulativeChartProps {
@@ -89,32 +93,40 @@ export function CumulativeChart({
     ...s,
   }));
 
-  const polylinePoints = coords
+  const todayJST = getTodayJSTDateString();
+  const todayIdx = points.findIndex((p) => p.date === todayJST);
+  // If viewing the current month, plot solid line up to today (JST) so future days don't appear as flat spending
+  const effectiveLastIdx = todayIdx >= 0 ? todayIdx : points.length - 1;
+  const plottedCoords = coords.slice(0, effectiveLastIdx + 1);
+
+  const polylinePoints = plottedCoords
     .map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`)
     .join(" ");
 
   const areaPath =
-    coords.length > 0
-      ? `M ${coords[0].x.toFixed(1)} ${baselineY.toFixed(1)} ` +
-        coords.map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ") +
-        ` L ${coords[coords.length - 1].x.toFixed(1)} ${baselineY.toFixed(1)} Z`
+    plottedCoords.length > 0
+      ? `M ${plottedCoords[0].x.toFixed(1)} ${baselineY.toFixed(1)} ` +
+        plottedCoords
+          .map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
+          .join(" ") +
+        ` L ${plottedCoords[plottedCoords.length - 1].x.toFixed(1)} ${baselineY.toFixed(1)} Z`
       : "";
 
-  const latestPoint = coords[coords.length - 1];
+  const latestPoint = plottedCoords[plottedCoords.length - 1];
   const isOverBudget =
     hasBudget &&
     latestPoint !== undefined &&
     latestPoint.pt.cumulative > budgetVal;
 
-  const displayIdx = activeIndex !== null ? activeIndex : points.length - 1;
-  const activeCoord = coords[displayIdx] ?? coords[coords.length - 1];
+  const displayIdx = activeIndex !== null ? activeIndex : effectiveLastIdx;
+  const activeCoord = coords[displayIdx] ?? coords[effectiveLastIdx];
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     if (rect.width <= 0) return;
     const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const idx = Math.round(relX * (points.length - 1));
-    setActiveIndex(idx);
+    const rawIdx = Math.round(relX * (points.length - 1));
+    setActiveIndex(Math.min(rawIdx, effectiveLastIdx));
   }
 
   return (

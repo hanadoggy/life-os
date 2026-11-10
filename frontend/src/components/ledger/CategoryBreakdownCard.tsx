@@ -50,31 +50,45 @@ export function CategoryBreakdownCard({
 }: CategoryBreakdownCardProps) {
   const [scope, setScope] = useState<BreakdownScope>("VARIABLE");
 
-  const scopedItems = breakdown
-    .map((item) => {
-      const amount =
-        scope === "VARIABLE"
-          ? item.variable_amount
-          : scope === "FIXED"
-            ? item.fixed_amount
-            : item.total_my_share;
-      const txCount =
-        scope === "VARIABLE"
-          ? item.variable_tx_count
-          : scope === "FIXED"
-            ? item.fixed_tx_count
-            : item.total_tx_count;
+  function getScopedItems(targetScope: BreakdownScope) {
+    return breakdown
+      .map((item) => {
+        const amount =
+          targetScope === "VARIABLE"
+            ? item.variable_amount
+            : targetScope === "FIXED"
+              ? item.fixed_amount
+              : item.total_my_share;
+        const txCount =
+          targetScope === "VARIABLE"
+            ? item.variable_tx_count
+            : targetScope === "FIXED"
+              ? item.fixed_tx_count
+              : item.total_tx_count;
 
-      return {
-        categoryId: item.category_id,
-        categoryName: item.category_name,
-        amount,
-        txCount,
-        pointsSaved: item.points_saved,
-      };
-    })
-    .filter((item) => item.amount > 0 || item.txCount > 0)
-    .sort((a, b) => b.amount - a.amount || a.categoryId - b.categoryId);
+        return {
+          categoryId: item.category_id,
+          categoryName: item.category_name,
+          amount,
+          txCount,
+          pointsSaved: item.points_saved,
+        };
+      })
+      .filter((item) => item.amount > 0)
+      .sort((a, b) => b.amount - a.amount || a.categoryId - b.categoryId);
+  }
+
+  const scopedItems = getScopedItems(scope);
+
+  function handleScopeChange(nextScope: BreakdownScope) {
+    setScope(nextScope);
+    if (selectedCategoryId !== null) {
+      const nextItems = getScopedItems(nextScope);
+      if (!nextItems.some((item) => item.categoryId === selectedCategoryId)) {
+        onToggleCategory(selectedCategoryId);
+      }
+    }
+  }
 
   const totalAmount = scopedItems.reduce((sum, item) => sum + item.amount, 0);
 
@@ -125,7 +139,7 @@ export function CategoryBreakdownCard({
               className={`${styles.tabBtn} ${
                 scope === key ? styles.tabActive : ""
               }`}
-              onClick={() => setScope(key)}
+              onClick={() => handleScopeChange(key)}
             >
               {SCOPE_LABELS[key]}
             </button>

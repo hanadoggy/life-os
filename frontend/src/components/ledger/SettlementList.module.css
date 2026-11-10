@@ -119,7 +119,7 @@
 
 .tabActive {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-primary-fg);
   font-weight: 600;
 }
 
@@ -212,12 +212,12 @@
 
 .dirReceivable {
   color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: var(--color-primary-tint);
 }
 
 .dirPayable {
   color: var(--color-accent);
-  background: var(--color-accent-soft);
+  background: var(--color-accent-tint);
 }
 
 .itemDate {

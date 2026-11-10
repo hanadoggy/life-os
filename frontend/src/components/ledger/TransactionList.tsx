@@ -210,7 +210,7 @@ export function TransactionList({
 
                       {tx.settlements.length > 0 && (
                         <span className={styles.settlementTag}>
-                          <Users size={14} strokeWidth={1.75} />
+                          <Users size={18} strokeWidth={1.75} />
                           <span>
                             {tx.settlements
                               .map((s) => s.peer_name)
@@ -239,7 +239,7 @@ export function TransactionList({
                         title="編集"
                         aria-hidden="true"
                       >
-                        <Edit3 size={16} strokeWidth={1.75} />
+                        <Edit3 size={18} strokeWidth={1.75} />
                       </span>
                       <button
                         type="button"
@@ -248,7 +248,7 @@ export function TransactionList({
                         aria-label={`${tx.title}を削除`}
                         title="削除"
                       >
-                        <Trash2 size={16} strokeWidth={1.75} />
+                        <Trash2 size={18} strokeWidth={1.75} />
                       </button>
                     </div>
                   </div>

@@ -51,15 +51,7 @@ function AuthenticatedWorkspace({
 
   return (
     <>
-      <main
-        style={{
-          maxWidth: "820px",
-          width: "100%",
-          margin: "0 auto",
-          padding: "16px 16px calc(92px + env(safe-area-inset-bottom, 0px))",
-          flex: 1,
-        }}
-      >
+      <main className="page-container">
         <Router
           routes={[
             {
@@ -212,14 +204,7 @@ export function App() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg-canvas)",
-      }}
-    >
+    <div className="app-shell">
       <TopBar
         year={year}
         month={month}

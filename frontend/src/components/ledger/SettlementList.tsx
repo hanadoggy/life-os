@@ -165,7 +165,7 @@ export function SettlementList({ items, byPeer }: SettlementListProps) {
                       }`}
                       aria-hidden="true"
                     >
-                      <Check size={14} strokeWidth={2.25} />
+                      <Check size={18} strokeWidth={1.75} />
                     </span>
 
                     <div className={styles.itemMain}>
@@ -182,12 +182,12 @@ export function SettlementList({ items, byPeer }: SettlementListProps) {
                         >
                           {isReceivable ? (
                             <>
-                              <ArrowDownLeft size={13} strokeWidth={1.75} />
+                              <ArrowDownLeft size={18} strokeWidth={1.75} />
                               <span>回収 (受取)</span>
                             </>
                           ) : (
                             <>
-                              <ArrowUpRight size={13} strokeWidth={1.75} />
+                              <ArrowUpRight size={18} strokeWidth={1.75} />
                               <span>支払 (送金)</span>
                             </>
                           )}

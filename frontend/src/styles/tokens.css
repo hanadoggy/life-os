@@ -37,8 +37,11 @@
   /* Motion */
   --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 150ms;
+  --transition-snappy: var(--duration-fast) var(--ease-snappy);
 
-  /* Layout */
+  /* Radii & Layout */
+  --radius-sm: 4px;
+  --radius-md: 6px;
   --max-width-app: 42rem;
   --bottom-nav-height: 3.75rem;
 

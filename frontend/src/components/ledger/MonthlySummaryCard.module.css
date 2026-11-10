@@ -41,7 +41,7 @@
   align-items: flex-end;
   gap: 4px;
   padding: 10px 12px;
-  background: var(--color-accent-soft);
+  background: var(--color-accent-tint);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
 }
@@ -170,7 +170,7 @@
 }
 
 .settlementBanner:hover {
-  background: var(--bg-elevated);
+  background: var(--bg-subtle);
 }
 
 .settlementBanner:active {
